@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { RatingSummaryBars } from "@/components/rating-summary";
 import { ReviewVotes } from "@/components/review-votes";
 import { AddToTimetable } from "@/components/add-to-timetable";
+import { BookmarkButton } from "@/components/bookmark-button";
 import { formatSlots } from "@/lib/schedule";
 import { SEMESTER_TERMS, RATING_DIMENSIONS } from "@/lib/config";
 import { getCourse } from "@/lib/data/courses";
 import { getReviews, getRatingSummary } from "@/lib/data/reviews";
+import { getCurrentUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -26,6 +29,20 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
     getReviews(course.courseCode),
     getRatingSummary(course.courseCode),
   ]);
+
+  const bookmarkCourseId = course.offerings[0]?.id;
+  let bookmarked = false;
+  const user = await getCurrentUser();
+  if (user && bookmarkCourseId) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("bookmarks")
+      .select("course_id")
+      .eq("user_id", user.id)
+      .eq("course_id", bookmarkCourseId)
+      .maybeSingle();
+    bookmarked = !!data;
+  }
 
   const semLabel = (id: string) => {
     const [y, t] = id.split("-");
@@ -52,6 +69,16 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
           </div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">{course.name}</h1>
           {course.nameEn && <p className="mt-1 text-body">{course.nameEn}</p>}
+
+          {bookmarkCourseId && (
+            <div className="mt-4">
+              <BookmarkButton
+                courseId={bookmarkCourseId}
+                courseCode={course.courseCode}
+                initial={bookmarked}
+              />
+            </div>
+          )}
 
           {/* Offerings */}
           <section className="mt-8">

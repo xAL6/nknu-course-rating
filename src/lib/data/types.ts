@@ -2,6 +2,7 @@ export type Slot = { weekday: number; period: string };
 
 /** One course offering (a course in a specific semester). */
 export type Offering = {
+  id?: string;
   syllabusNo: string | null;
   courseCode: string;
   name: string;

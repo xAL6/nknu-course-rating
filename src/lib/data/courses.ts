@@ -16,6 +16,7 @@ const FIXTURE = fixtureJson as unknown as Offering[];
 
 // ── Row mapping (Supabase) ──
 export type CourseRow = {
+  id?: string;
   syllabus_no: string | null;
   course_code: string;
   name: string;
@@ -40,6 +41,7 @@ export type CourseRow = {
 
 export function rowToOffering(r: CourseRow): Offering {
   return {
+    id: r.id,
     syllabusNo: r.syllabus_no,
     courseCode: r.course_code,
     name: r.name,
