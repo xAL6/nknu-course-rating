@@ -66,7 +66,15 @@ export async function submitReview(formData: FormData) {
   );
   if (error) throw error;
 
+  // Reputation = 10 points per review (idempotent recompute).
+  const { count } = await supabase
+    .from("reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+  await supabase.from("profiles").update({ reputation: (count ?? 0) * 10 }).eq("user_id", user.id);
+
   revalidatePath(`/course/${input.courseCode}`);
+  revalidatePath("/leaderboard");
   return { ok: true };
 }
 

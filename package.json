@@ -11,9 +11,12 @@
     "migrate": "tsx --env-file=.env.local scripts/migrate.ts"
   },
   "dependencies": {
+    "@ai-sdk/deepseek": "^2.0.35",
+    "@ai-sdk/react": "^3.0.198",
     "@base-ui/react": "^1.5.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
+    "ai": "^6.0.196",
     "axios": "^1.17.0",
     "axios-cookiejar-support": "^7.0.0",
     "cheerio": "^1.2.0",
