@@ -12,7 +12,8 @@
     "delete-semester": "tsx --env-file=.env.local scripts/delete-semester.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "reset-data": "tsx --env-file=.env.local scripts/reset-data.ts"
+    "reset-data": "tsx --env-file=.env.local scripts/reset-data.ts",
+    "crawl:rooms": "tsx --env-file=.env.local scripts/scraper/rooms.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",

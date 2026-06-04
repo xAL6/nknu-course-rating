@@ -15,12 +15,14 @@ export type Offering = {
   classTimeRaw: string | null;
   slots: Slot[];
   classroom: string | null;
+  campus: string | null;
   enrollCount: number | null;
   enrollCap: number | null;
   syllabusUrl: string | null;
   semesterId: string;
   departmentCode: string;
   departmentName: string;
+  classCode: string | null;
   degreeLevel: string | null;
   dayNight: string | null;
 };

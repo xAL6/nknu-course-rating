@@ -7,7 +7,9 @@ type Enriched = CourseRecord & {
   departmentCode: string;
   departmentName: string;
   degreeLevel?: string;
+  degreeLevelCode?: string;
   dayNight?: string;
+  classCode?: string | null;
 };
 
 function admin(): SupabaseClient {
@@ -72,8 +74,10 @@ export async function upsertCourses(records: Enriched[]) {
     category: r.category,
     department_code: r.departmentCode,
     class_name: r.className,
+    class_code: r.classCode ?? null,
     semester_id: r.semesterId,
     degree_level: r.degreeLevel ?? null,
+    degree_level_code: r.degreeLevelCode ?? null,
     day_night: r.dayNight ?? null,
     class_time_raw: r.classTimeRaw,
     slots: r.slots,
