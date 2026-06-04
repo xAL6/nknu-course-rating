@@ -10,7 +10,14 @@ import { randomDisplayName } from "@/lib/auth";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+
+  // Only allow same-origin relative paths to prevent open redirects
+  // (reject protocol-relative //, backslash, and absolute URLs).
+  const rawNext = searchParams.get("next") ?? "/";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\")
+      ? rawNext
+      : "/";
 
   if (!code) return NextResponse.redirect(`${origin}/auth?error=auth`);
 
@@ -41,5 +48,5 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  return NextResponse.redirect(new URL(next, origin));
 }
