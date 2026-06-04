@@ -103,7 +103,7 @@ async function main() {
               await sleep(delay);
 
               let deptCount = 0;
-              for (const klass of pickClasses(classes, Boolean(args["all-classes"]))) {
+              for (const klass of pickClasses(classes)) {
                 const records = await client.search($, {
                   year,
                   semester: sem,
@@ -153,15 +153,13 @@ async function main() {
 }
 
 /**
- * If a "全年級/全部/不分" class exists, one search returns the whole department.
- * Otherwise (e.g. graduate institutes) the class filter applies, so we must
- * union every class. Dedup by syllabusNo upstream keeps it correct.
+ * The class (班級/系級) filter genuinely restricts results: "全年級選課用" only
+ * returns all-grade electives (選修); each grade's 必修 are locked under that
+ * specific 班級. So we must search EVERY class and union (dedup by syllabusNo
+ * upstream). Verified: 國文學系 114-2 → 全年級 5 vs union-of-9-classes 105.
  */
-function pickClasses(classes: Option[], allClasses: boolean): (Option | undefined)[] {
-  if (classes.length === 0) return [undefined];
-  if (allClasses) return classes;
-  const whole = classes.find((c) => /全年級|全部|不分/.test(c.label));
-  return whole ? [whole] : classes;
+function pickClasses(classes: Option[]): (Option | undefined)[] {
+  return classes.length === 0 ? [undefined] : classes;
 }
 
 main().catch((e) => {
