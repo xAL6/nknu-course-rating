@@ -13,7 +13,7 @@ export default async function MePage() {
     return (
       <div className="mx-auto max-w-md px-6 py-20 text-center">
         <p className="text-sm text-body">請先登入以查看你的評價與收藏。</p>
-        <Button render={<Link href="/auth" />} nativeButton={false} className="mt-4 rounded-full">
+        <Button render={<Link href="/sign-in" />} nativeButton={false} className="mt-4 rounded-full">
           前往登入
         </Button>
       </div>
