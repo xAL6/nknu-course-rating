@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured, rowToOffering, groupByCode, SELECT, type CourseRow } from "./courses";
+import { isSupabaseConfigured, rowToOffering, groupCourses, SELECT, type CourseRow } from "./courses";
 import type { CourseGroup, RatingSummary } from "./types";
 
 export type TeacherListItem = { name: string; courseCount: number };
@@ -55,7 +55,7 @@ export async function getTeacher(name: string): Promise<TeacherDetail | null> {
     .map((l) => (l.courses ? rowToOffering(l.courses as unknown as CourseRow) : null))
     .filter((o): o is NonNullable<typeof o> => o !== null);
 
-  const courses = groupByCode(offerings).sort((a, b) => b.latestSemester.localeCompare(a.latestSemester));
+  const courses = groupCourses(offerings).sort((a, b) => b.latestSemester.localeCompare(a.latestSemester));
 
   // Aggregate rating across this teacher's courses (from the summary table).
   const codes = [...new Set(courses.map((c) => c.courseCode))];

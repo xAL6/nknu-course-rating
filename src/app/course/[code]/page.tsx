@@ -14,19 +14,36 @@ import { getReviews, getRatingSummary } from "@/lib/data/reviews";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
-export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
+type SP = { [k: string]: string | string[] | undefined };
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<SP>;
+}) {
   const { code } = await params;
-  const course = await getCourse(decodeURIComponent(code));
+  const n = one((await searchParams).n);
+  const course = await getCourse(decodeURIComponent(code), n);
   return { title: course ? `${course.name}（${course.courseCode}）` : "課程" };
 }
 
-export default async function CoursePage({ params }: { params: Promise<{ code: string }> }) {
+export default async function CoursePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<SP>;
+}) {
   const { code } = await params;
-  const course = await getCourse(decodeURIComponent(code));
+  const n = one((await searchParams).n);
+  const course = await getCourse(decodeURIComponent(code), n);
   if (!course) notFound();
 
   const [reviews, summary] = await Promise.all([
-    getReviews(course.courseCode),
+    getReviews(course.courseCode, course.name),
     getRatingSummary(course.courseCode),
   ]);
 
@@ -153,7 +170,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
           <section className="mt-10">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold tracking-tight">學生評價</h2>
-              <Button render={<Link href={`/submit?course=${course.courseCode}`} />} nativeButton={false} size="sm">
+              <Button render={<Link href={`/submit?course=${encodeURIComponent(course.courseCode)}&n=${encodeURIComponent(course.name)}`} />} nativeButton={false} size="sm">
                 撰寫評價
               </Button>
             </div>
