@@ -120,8 +120,9 @@ async function main() {
                   seen.add(key);
                   all.push({
                     ...r,
-                    // 系級/班級 from the searched uClass (authoritative grouping);
-                    // 必修 are locked under a specific 班級, 全年級 holds 選修.
+                    // 系級/班級 from the searched uClass. Each 班級 holds that
+                    // grade's 必修 AND 選修; 全年級選課用 holds the all-grade 選修.
+                    // We union every class, so all course types are captured.
                     className: klass?.label ?? r.className,
                     classCode: klass?.value ?? null,
                     semesterId,
@@ -160,10 +161,10 @@ async function main() {
 }
 
 /**
- * The class (班級/系級) filter genuinely restricts results: "全年級選課用" only
- * returns all-grade electives (選修); each grade's 必修 are locked under that
- * specific 班級. So we must search EVERY class and union (dedup by syllabusNo
- * upstream). Verified: 國文學系 114-2 → 全年級 5 vs union-of-9-classes 105.
+ * The class (班級/系級) filter genuinely restricts results. "全年級選課用" only
+ * returns all-grade 選修; each 班級 returns that grade's 必修 AND its 選修. No
+ * single search returns the whole department, so we search EVERY class and union
+ * (dedup by syllabusNo upstream). Verified: 國文 114-2 → 全年級 5 vs union 105.
  */
 function pickClasses(classes: Option[]): (Option | undefined)[] {
   return classes.length === 0 ? [undefined] : classes;
