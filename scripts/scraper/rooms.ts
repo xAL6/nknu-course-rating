@@ -105,18 +105,21 @@ async function main() {
         [b.code, b.campus, b.code, b.name],
       );
     }
-    // Backfill: match the course room code's building prefix. Order by code
-    // length desc so 2-char codes (燕巢 letters, 和平 "11"/"CB") win over 1-char.
+    // Backfill campus from the room code prefix. 和平 buildings are numeric
+    // (0,1,3,4,5,6,7,9,11) plus G(體育館) and CB(宿舍B); 燕巢 buildings are all
+    // letter-coded (BT,CM,LI,MA,PH,SF,SR,TC). Course room codes use those
+    // prefixes (case-insensitive, sometimes 1 letter, e.g. P5011 -> PH). So:
+    // digit / G / CB -> 和平; any other leading letter -> 燕巢.
     const res = await db.query(`
-      update courses c set campus = sub.campus
-      from (
-        select distinct on (cc.id) cc.id, r.campus
-        from courses cc
-        join rooms r on split_part(cc.classroom, ' ', 1) like r.room_code || '%'
-        where cc.classroom is not null and cc.classroom <> ''
-        order by cc.id, length(r.room_code) desc
-      ) sub
-      where c.id = sub.id`);
+      update courses c set campus = case
+        when s.room ~ '^[0-9]'    then '和平'
+        when s.room ~* '^CB'      then '和平'
+        when s.room ~* '^G'       then '和平'
+        when s.room ~ '^[A-Za-z]' then '燕巢'
+        else null end
+      from (select id, split_part(classroom, ' ', 1) as room from courses
+            where classroom is not null and classroom <> '') s
+      where c.id = s.id and s.room <> ''`);
     process.stderr.write(`[rooms] stored ${buildings.length} buildings; backfilled campus on ${res.rowCount} courses\n`);
   } finally {
     await db.end();

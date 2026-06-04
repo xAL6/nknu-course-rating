@@ -49,3 +49,13 @@ export const SEMESTER_TERMS: Record<string, string> = {
   "2": "第二學期",
   "3": "暑期",
 };
+
+/** Random anonymized handle for first-time profiles, e.g. "綠色的椰子371". */
+export function randomDisplayName(): string {
+  const colors = ["紅", "橙", "黃", "綠", "藍", "靛", "紫", "青", "棕", "灰"];
+  const animals = ["椰子", "石虎", "黑熊", "海豚", "貓頭鷹", "梅花鹿", "穿山甲", "藍鵲", "獼猴", "雲豹"];
+  const c = colors[Math.floor(Math.random() * colors.length)];
+  const a = animals[Math.floor(Math.random() * animals.length)];
+  const n = Math.floor(Math.random() * 900 + 100);
+  return `${c}色的${a}${n}`;
+}

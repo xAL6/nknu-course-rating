@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Bookmark, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { SEMESTER_TERMS } from "@/lib/config";
 
@@ -13,14 +13,14 @@ export default async function MePage() {
     return (
       <div className="mx-auto max-w-md px-6 py-20 text-center">
         <p className="text-sm text-body">請先登入以查看你的評價與收藏。</p>
-        <Button render={<Link href="/sign-in" />} nativeButton={false} className="mt-4 rounded-full">
+        <Button render={<Link href="/auth" />} nativeButton={false} className="mt-4 rounded-full">
           前往登入
         </Button>
       </div>
     );
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const [{ data: reviews }, { data: bookmarks }] = await Promise.all([
     supabase
       .from("reviews")

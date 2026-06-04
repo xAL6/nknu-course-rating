@@ -2,11 +2,29 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAllowedUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { isAllowedEmail, randomDisplayName } from "@/lib/config";
 
-// Writes are guarded here by Clerk auth + NKNU-domain check (requireAllowedUser),
-// then performed with the service-role client. Reads stay public via anon + RLS.
+/** Require an authenticated NKNU-domain user; ensure their profile exists. */
+async function requireUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !isAllowedEmail(user.email)) throw new Error("UNAUTHORIZED");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  let displayName = profile?.display_name;
+  if (!displayName) {
+    displayName = randomDisplayName();
+    await supabase.from("profiles").insert({ user_id: user.id, display_name: displayName });
+  }
+  return { supabase, user, displayName };
+}
 
 const reviewSchema = z.object({
   courseCode: z.string().min(1),
@@ -22,21 +40,20 @@ const reviewSchema = z.object({
 });
 
 export async function submitReview(formData: FormData) {
-  const { id: userId, displayName } = await requireAllowedUser();
+  const { supabase, user, displayName } = await requireUser();
   const input = reviewSchema.parse(Object.fromEntries(formData));
-  const db = createAdminClient();
 
-  const { data: course } = await db
+  const { data: course } = await supabase
     .from("courses")
     .select("id, semester_id")
     .eq("syllabus_no", input.syllabusNo)
     .maybeSingle();
   if (!course) throw new Error("COURSE_NOT_FOUND");
 
-  const { error } = await db.from("reviews").upsert(
+  const { error } = await supabase.from("reviews").upsert(
     {
       course_id: course.id,
-      user_id: userId,
+      user_id: user.id,
       semester_id: input.semesterId ?? course.semester_id,
       sweetness: input.sweetness,
       coolness: input.coolness,
@@ -52,11 +69,11 @@ export async function submitReview(formData: FormData) {
   );
   if (error) throw error;
 
-  const { count } = await db
+  const { count } = await supabase
     .from("reviews")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
-  await db.from("profiles").update({ reputation: (count ?? 0) * 10 }).eq("user_id", userId);
+    .eq("user_id", user.id);
+  await supabase.from("profiles").update({ reputation: (count ?? 0) * 10 }).eq("user_id", user.id);
 
   revalidatePath(`/course/${input.courseCode}`);
   revalidatePath("/leaderboard");
@@ -64,19 +81,18 @@ export async function submitReview(formData: FormData) {
 }
 
 export async function toggleBookmark(courseId: string, courseCode: string) {
-  const { id: userId } = await requireAllowedUser();
-  const db = createAdminClient();
-  const { data: existing } = await db
+  const { supabase, user } = await requireUser();
+  const { data: existing } = await supabase
     .from("bookmarks")
     .select("course_id")
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .eq("course_id", courseId)
     .maybeSingle();
 
   if (existing) {
-    await db.from("bookmarks").delete().eq("user_id", userId).eq("course_id", courseId);
+    await supabase.from("bookmarks").delete().eq("user_id", user.id).eq("course_id", courseId);
   } else {
-    await db.from("bookmarks").insert({ user_id: userId, course_id: courseId });
+    await supabase.from("bookmarks").insert({ user_id: user.id, course_id: courseId });
   }
   revalidatePath(`/course/${courseCode}`);
   return { bookmarked: !existing };
@@ -85,31 +101,29 @@ export async function toggleBookmark(courseId: string, courseCode: string) {
 const voteKind = z.enum(["like", "useful", "not_useful"]);
 
 export async function voteReview(reviewId: string, kind: string, courseCode: string) {
-  const { id: userId } = await requireAllowedUser();
+  const { supabase, user } = await requireUser();
   const k = voteKind.parse(kind);
-  const db = createAdminClient();
-  const { data: existing } = await db
+  const { data: existing } = await supabase
     .from("votes")
     .select("kind")
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .eq("review_id", reviewId)
     .eq("kind", k)
     .maybeSingle();
 
   if (existing) {
-    await db.from("votes").delete().eq("user_id", userId).eq("review_id", reviewId).eq("kind", k);
+    await supabase.from("votes").delete().eq("user_id", user.id).eq("review_id", reviewId).eq("kind", k);
   } else {
-    await db.from("votes").insert({ user_id: userId, review_id: reviewId, kind: k });
+    await supabase.from("votes").insert({ user_id: user.id, review_id: reviewId, kind: k });
   }
   revalidatePath(`/course/${courseCode}`);
   return { voted: !existing };
 }
 
 export async function addComment(reviewId: string, body: string, courseCode: string) {
-  const { id: userId } = await requireAllowedUser();
+  const { supabase, user } = await requireUser();
   const text = z.string().min(1).max(2000).parse(body);
-  const db = createAdminClient();
-  await db.from("comments").insert({ review_id: reviewId, user_id: userId, body: text });
+  await supabase.from("comments").insert({ review_id: reviewId, user_id: user.id, body: text });
   revalidatePath(`/course/${courseCode}`);
   return { ok: true };
 }
