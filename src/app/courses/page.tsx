@@ -17,6 +17,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
     q: str(sp.q),
     dept: str(sp.dept),
     semester: str(sp.semester),
+    level: str(sp.level),
     page,
   });
 
@@ -26,6 +27,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
     if (str(sp.q)) next.set("q", str(sp.q)!);
     if (str(sp.dept)) next.set("dept", str(sp.dept)!);
     if (str(sp.semester)) next.set("semester", str(sp.semester)!);
+    if (str(sp.level)) next.set("level", str(sp.level)!);
     next.set("page", String(p));
     return `/courses?${next.toString()}`;
   };
@@ -45,7 +47,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
         <CoursesFilter
           departments={result.departments}
           semesters={result.semesters}
-          current={{ q: str(sp.q), dept: str(sp.dept), semester: str(sp.semester) }}
+          levels={result.levels}
+          current={{ q: str(sp.q), dept: str(sp.dept), semester: str(sp.semester), level: str(sp.level) }}
         />
       </div>
 

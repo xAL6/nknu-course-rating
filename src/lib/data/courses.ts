@@ -35,6 +35,7 @@ export type CourseRow = {
   enroll_count: number | null;
   enroll_cap: number | null;
   syllabus_url: string | null;
+  degree_level: string | null;
   departments?: { name: string } | null;
   course_teachers?: { teachers: { name: string } | null }[];
 };
@@ -60,6 +61,8 @@ export function rowToOffering(r: CourseRow): Offering {
     semesterId: r.semester_id,
     departmentCode: r.department_code ?? "",
     departmentName: r.departments?.name ?? "",
+    degreeLevel: r.degree_level ?? null,
+    dayNight: r.day_night ?? null,
   };
 }
 
@@ -83,6 +86,7 @@ export function groupByCode(offerings: Offering[]): CourseGroup[] {
       credits: latest.credits,
       departments: [...new Set(offs.map((o) => o.departmentName).filter(Boolean))],
       teachers: [...new Set(offs.flatMap((o) => o.teachers))],
+      degreeLevel: latest.degreeLevel,
       latestSemester: latest.semesterId,
       offerings: sorted,
       summary: null,
@@ -95,6 +99,7 @@ export type CourseListParams = {
   q?: string;
   dept?: string;
   semester?: string;
+  level?: string;
   page?: number;
   pageSize?: number;
 };
@@ -106,10 +111,11 @@ export type CourseListResult = {
   pageSize: number;
   departments: { code: string; name: string }[];
   semesters: string[];
+  levels: string[];
 };
 
 export async function listCourses(params: CourseListParams): Promise<CourseListResult> {
-  const { q, dept, semester, page = 1, pageSize = 24 } = params;
+  const { q, dept, semester, level, page = 1, pageSize = 24 } = params;
 
   if (!isSupabaseConfigured()) return listFromFixture(params);
 
@@ -140,6 +146,8 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
     if (batch.length < PAGE) break;
   }
 
+  const levels = [...new Set(offerings.map((o) => o.degreeLevel).filter(Boolean))] as string[];
+  if (level) offerings = offerings.filter((o) => o.degreeLevel === level);
   if (q) {
     const n = q.trim().toLowerCase();
     offerings = offerings.filter(
@@ -160,6 +168,7 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
     pageSize,
     departments,
     semesters,
+    levels,
   };
 }
 
@@ -176,7 +185,7 @@ export async function getCourse(courseCode: string): Promise<CourseGroup | null>
 
 // ── Fixture fallback ──
 function listFromFixture(params: CourseListParams): CourseListResult {
-  const { q, dept, semester, page = 1, pageSize = 24 } = params;
+  const { q, dept, semester, level, page = 1, pageSize = 24 } = params;
   const semesters = [...new Set(FIXTURE.map((o) => o.semesterId))].sort((a, b) => b.localeCompare(a));
   const departments = [
     ...new Map(FIXTURE.map((o) => [o.departmentCode, o.departmentName])).entries(),
@@ -184,7 +193,9 @@ function listFromFixture(params: CourseListParams): CourseListResult {
   const sem = semester || semesters[0];
 
   let offerings = FIXTURE.filter((o) => o.semesterId === sem);
+  const levels = [...new Set(offerings.map((o) => o.degreeLevel).filter(Boolean))] as string[];
   if (dept) offerings = offerings.filter((o) => o.departmentCode === dept);
+  if (level) offerings = offerings.filter((o) => o.degreeLevel === level);
   if (q) {
     const n = q.trim().toLowerCase();
     offerings = offerings.filter(
@@ -197,5 +208,13 @@ function listFromFixture(params: CourseListParams): CourseListResult {
   }
   const groups = groupByCode(offerings).sort((a, b) => a.courseCode.localeCompare(b.courseCode));
   const start = (page - 1) * pageSize;
-  return { items: groups.slice(start, start + pageSize), total: groups.length, page, pageSize, departments, semesters };
+  return {
+    items: groups.slice(start, start + pageSize),
+    total: groups.length,
+    page,
+    pageSize,
+    departments,
+    semesters,
+    levels,
+  };
 }

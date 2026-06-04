@@ -116,34 +116,53 @@ export class NknuClient {
     return out;
   }
 
+  /** uDeformType (學制) radio options: 1 大學部 / 2 碩 / 3 博 / G 通識 / S 學院 / H 學程. */
+  deforms($: cheerio.CheerioAPI): Option[] {
+    const out: Option[] = [];
+    $(`input[name="${F.deform}"]`).each((_, el) => {
+      const value = $(el).attr("value") ?? "";
+      const label = $(el).parent().text().replace(/\s+/g, " ").trim();
+      if (value) out.push({ value, label });
+    });
+    return out;
+  }
+
   /**
-   * Select a year/semester/department (the department change repopulates the
-   * class list via postback) and return the resulting page + its class options.
+   * Select a 學制 (uDeformType) + 日夜 (uDN); this repopulates the department
+   * dropdown. Returns the page + the department list for that combination.
    */
-  async selectDepartment(
+  async selectDeform(
     $: cheerio.CheerioAPI,
-    year: string,
-    semester: string,
-    departmentCode: string,
-  ): Promise<{ $: cheerio.CheerioAPI; classes: Option[] }> {
+    ctx: { year: string; semester: string; deform: string; dn: string },
+  ): Promise<{ $: cheerio.CheerioAPI; departments: Option[] }> {
     const $after = await this.post(
       $,
-      { [F.year]: year, [F.semester]: semester, [F.department]: departmentCode },
-      { eventTarget: F.department },
+      {
+        [F.year]: ctx.year,
+        [F.semester]: ctx.semester,
+        [F.deform]: ctx.deform,
+        [F.dn]: ctx.dn,
+      },
+      { eventTarget: F.deform },
     );
+    return { $: $after, departments: this.departments($after) };
+  }
+
+  /** Select a department (repopulates the class list) within a deform/dn context. */
+  async selectDepartment(
+    $: cheerio.CheerioAPI,
+    ctx: Ctx & { departmentCode: string },
+  ): Promise<{ $: cheerio.CheerioAPI; classes: Option[] }> {
+    const $after = await this.post($, ctxOverrides(ctx), { eventTarget: F.department });
     return { $: $after, classes: this.classes($after) };
   }
 
   /** Run the search and return the raw results page. */
   async searchPage(
     $: cheerio.CheerioAPI,
-    sel: { year: string; semester: string; departmentCode: string; classCode?: string },
+    sel: Ctx & { departmentCode: string; classCode?: string },
   ): Promise<cheerio.CheerioAPI> {
-    const overrides: Record<string, string> = {
-      [F.year]: sel.year,
-      [F.semester]: sel.semester,
-      [F.department]: sel.departmentCode,
-    };
+    const overrides = ctxOverrides(sel);
     if (sel.classCode) overrides[F.klass] = sel.classCode;
     return this.post($, overrides, { clickSearch: true });
   }
@@ -151,10 +170,28 @@ export class NknuClient {
   /** Run the search for the current selection (optionally a specific class). */
   async search(
     $: cheerio.CheerioAPI,
-    sel: { year: string; semester: string; departmentCode: string; classCode?: string },
+    sel: Ctx & { departmentCode: string; classCode?: string },
   ): Promise<CourseRecord[]> {
     return parseCourses(await this.searchPage($, sel));
   }
+}
+
+type Ctx = {
+  year: string;
+  semester: string;
+  deform: string;
+  dn: string;
+  departmentCode: string;
+};
+
+function ctxOverrides(c: Ctx): Record<string, string> {
+  return {
+    [F.year]: c.year,
+    [F.semester]: c.semester,
+    [F.deform]: c.deform,
+    [F.dn]: c.dn,
+    [F.department]: c.departmentCode,
+  };
 }
 
 /** Anchor-based parse of the result list table. */

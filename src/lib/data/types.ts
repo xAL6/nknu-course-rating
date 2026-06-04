@@ -21,6 +21,8 @@ export type Offering = {
   semesterId: string;
   departmentCode: string;
   departmentName: string;
+  degreeLevel: string | null;
+  dayNight: string | null;
 };
 
 export type RatingSummary = {
@@ -40,6 +42,7 @@ export type CourseGroup = {
   credits: number | null;
   departments: string[];
   teachers: string[];
+  degreeLevel: string | null;
   latestSemester: string;
   offerings: Offering[];
   summary: RatingSummary | null;

@@ -36,10 +36,21 @@ async function main() {
   });
   await client.connect();
   try {
+    await client.query(
+      "create table if not exists _migrations (name text primary key, applied_at timestamptz default now())",
+    );
+    const { rows } = await client.query("select name from _migrations");
+    const done = new Set(rows.map((r) => r.name as string));
+
     for (const f of files) {
+      if (done.has(f)) {
+        process.stderr.write(`[migrate] skip ${f} (already applied)\n`);
+        continue;
+      }
       const sql = readFileSync(join(dir, f), "utf-8");
       process.stderr.write(`[migrate] applying ${f}…\n`);
       await client.query(sql);
+      await client.query("insert into _migrations(name) values ($1)", [f]);
       process.stderr.write(`[migrate] ✓ ${f}\n`);
     }
   } finally {

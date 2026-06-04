@@ -14,11 +14,13 @@ import { SEMESTER_TERMS } from "@/lib/config";
 export function CoursesFilter({
   departments,
   semesters,
+  levels,
   current,
 }: {
   departments: { code: string; name: string }[];
   semesters: string[];
-  current: { q?: string; dept?: string; semester?: string };
+  levels: string[];
+  current: { q?: string; dept?: string; semester?: string; level?: string };
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -69,6 +71,20 @@ export function CoursesFilter({
           {semesters.map((s) => (
             <SelectItem key={s} value={s}>
               {semLabel(s)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={current.level ?? "all"} onValueChange={(v) => update({ level: v ?? undefined })}>
+        <SelectTrigger className="w-[150px]">
+          <SelectValue>{(v) => (!v || v === "all" ? "全部學制" : String(v))}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">全部學制</SelectItem>
+          {levels.map((l) => (
+            <SelectItem key={l} value={l}>
+              {l}
             </SelectItem>
           ))}
         </SelectContent>

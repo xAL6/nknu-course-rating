@@ -1,17 +1,14 @@
 /**
- * NKNU course crawler.
+ * NKNU course crawler — full coverage across 學制 (uDeformType) × 日夜 (uDN).
  *
- *   npm run crawl -- --year 115 --sem 1 --dept 國文 --dump out.json
- *   npm run crawl -- --year 115 --sem 1            # all depts -> Supabase
+ *   npm run crawl -- --year 114 --sem 2            # all levels -> Supabase
+ *   npm run crawl -- --year 114 --sem 2 --dump out.json
  *
- * Flags:
- *   --year <ROC>         single year (default: all years on the page)
- *   --sem <1|2|3>        single semester (default: 1 and 2)
- *   --dept <code|名稱>    filter departments by code or name substring
- *   --all-classes        iterate every class (default: prefer 全年級, union)
- *   --dump <path>        write JSON instead of upserting to Supabase
- *   --limit <n>          stop after n departments (debugging)
- *   --delay <ms>         polite delay between requests (default 1200)
+ * 學制: 1 大學部 / 2 碩士班 / 3 博士班 / G 通識軍訓體育 / S 學院開課 / H 學程第二專長
+ * 日夜: D 日間 / N 進修 ; 校區預設「全部」(和平+燕巢)
+ *
+ * Flags: --year --sem --deform <v> --dn <D|N> --dept <code|名稱>
+ *        --all-classes --dump <path> --limit <n> --delay <ms>
  */
 import { writeFileSync } from "node:fs";
 import { NknuClient, type CourseRecord, type Option } from "./nknu.js";
@@ -33,65 +30,111 @@ function parseArgs(argv: string[]): Args {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+type Enriched = CourseRecord & {
+  semesterId: string;
+  departmentCode: string;
+  departmentName: string;
+  degreeLevel: string;
+  dayNight: string;
+};
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const delay = Number(args.delay ?? 1200);
+  const delay = Number(args.delay ?? 1000);
   const client = new NknuClient();
 
   const $0 = await client.getInitial();
-  const years = args.year ? [String(args.year)] : client.years($0).map((y) => y.value);
-  const semesters = args.sem ? [String(args.sem)] : ["1", "2"];
-
-  let departments = client.departments($0);
-  if (args.dept) {
-    const f = String(args.dept);
-    departments = departments.filter((d) => d.value === f || d.label.includes(f));
+  let years: string[];
+  if (args.year) {
+    years = [String(args.year)];
+  } else {
+    const from = args.from ? Number(args.from) : -Infinity;
+    const to = args.to ? Number(args.to) : Infinity;
+    years = client
+      .years($0)
+      .map((y) => y.value)
+      .filter((y) => Number(y) >= from && Number(y) <= to);
   }
-  if (args.limit) departments = departments.slice(0, Number(args.limit));
+  const semesters = args.sem ? [String(args.sem)] : ["1", "2"];
+  let deforms = client.deforms($0);
+  if (args.deform) deforms = deforms.filter((d) => d.value === String(args.deform));
+  const dns = args.dn ? [String(args.dn)] : ["D", "N"];
 
   console.error(
-    `[crawl] years=${years.join(",")} sems=${semesters.join(",")} depts=${departments.length}`,
+    `[crawl] years=${years.join(",")} sems=${semesters.join(",")} ` +
+      `deforms=${deforms.map((d) => d.value).join(",")} dn=${dns.join(",")}`,
   );
 
-  const all: (CourseRecord & { semesterId: string; departmentCode: string; departmentName: string })[] =
-    [];
+  const all: Enriched[] = [];
   const seen = new Set<string>();
 
   for (const year of years) {
     for (const sem of semesters) {
       const semesterId = `${year}-${sem}`;
-      for (const dept of departments) {
-        try {
-          const { $, classes } = await client.selectDepartment($0, year, sem, dept.value);
-          await sleep(delay);
-
-          const targetClasses = pickClasses(classes, Boolean(args["all-classes"]));
-          let deptCount = 0;
-          for (const klass of targetClasses) {
-            const records = await client.search($, {
-              year,
-              semester: sem,
-              departmentCode: dept.value,
-              classCode: klass?.value,
-            });
-            for (const r of records) {
-              const key = `${semesterId}:${r.syllabusNo ?? r.courseCode + r.teachers.join()}`;
-              if (seen.has(key)) continue;
-              seen.add(key);
-              all.push({
-                ...r,
-                semesterId,
-                departmentCode: dept.value,
-                departmentName: dept.label,
-              });
-              deptCount++;
-            }
+      for (const deform of deforms) {
+        for (const dn of dns) {
+          let departments: Option[];
+          let $base;
+          try {
+            const r = await client.selectDeform($0, { year, semester: sem, deform: deform.value, dn });
+            departments = r.departments;
+            $base = r.$;
             await sleep(delay);
+          } catch (e) {
+            console.error(`[crawl] ERROR deform ${deform.value}/${dn}:`, (e as Error).message);
+            continue;
           }
-          console.error(`[crawl] ${semesterId} ${dept.label} -> ${deptCount} courses`);
-        } catch (e) {
-          console.error(`[crawl] ERROR ${semesterId} ${dept.label}:`, (e as Error).message);
-          await sleep(delay * 2); // back off
+          if (args.dept) {
+            const f = String(args.dept);
+            departments = departments.filter((d) => d.value === f || d.label.includes(f));
+          }
+          if (args.limit) departments = departments.slice(0, Number(args.limit));
+          if (departments.length === 0) continue;
+
+          for (const dept of departments) {
+            try {
+              const { $, classes } = await client.selectDepartment($base, {
+                year,
+                semester: sem,
+                deform: deform.value,
+                dn,
+                departmentCode: dept.value,
+              });
+              await sleep(delay);
+
+              let deptCount = 0;
+              for (const klass of pickClasses(classes, Boolean(args["all-classes"]))) {
+                const records = await client.search($, {
+                  year,
+                  semester: sem,
+                  deform: deform.value,
+                  dn,
+                  departmentCode: dept.value,
+                  classCode: klass?.value,
+                });
+                for (const r of records) {
+                  const key = `${semesterId}:${r.syllabusNo ?? r.courseCode + r.teachers.join()}`;
+                  if (seen.has(key)) continue;
+                  seen.add(key);
+                  all.push({
+                    ...r,
+                    semesterId,
+                    departmentCode: dept.value,
+                    departmentName: dept.label,
+                    degreeLevel: deform.label.replace(/^[A-Za-z0-9/]+[:：]\s*/, ""),
+                    dayNight: dn,
+                  });
+                  deptCount++;
+                }
+                await sleep(delay);
+              }
+              if (deptCount > 0)
+                console.error(`[crawl] ${semesterId} ${deform.value}/${dn} ${dept.label} -> ${deptCount}`);
+            } catch (e) {
+              console.error(`[crawl] ERROR ${semesterId} ${dept.label}:`, (e as Error).message);
+              await sleep(delay * 2);
+            }
+          }
         }
       }
     }
@@ -100,9 +143,8 @@ async function main() {
   console.error(`[crawl] total unique offerings: ${all.length}`);
 
   if (args.dump) {
-    const path = String(args.dump);
-    writeFileSync(path, JSON.stringify(all, null, 2), "utf-8");
-    console.error(`[crawl] wrote ${path}`);
+    writeFileSync(String(args.dump), JSON.stringify(all, null, 2), "utf-8");
+    console.error(`[crawl] wrote ${args.dump}`);
   } else {
     const { upsertCourses } = await import("./upsert.js");
     await upsertCourses(all);
@@ -110,9 +152,13 @@ async function main() {
   }
 }
 
-/** Prefer a "全年級/全部" class (covers the whole dept); else iterate all. */
+/**
+ * If a "全年級/全部/不分" class exists, one search returns the whole department.
+ * Otherwise (e.g. graduate institutes) the class filter applies, so we must
+ * union every class. Dedup by syllabusNo upstream keeps it correct.
+ */
 function pickClasses(classes: Option[], allClasses: boolean): (Option | undefined)[] {
-  if (classes.length === 0) return [undefined]; // search with default
+  if (classes.length === 0) return [undefined];
   if (allClasses) return classes;
   const whole = classes.find((c) => /全年級|全部|不分/.test(c.label));
   return whole ? [whole] : classes;
