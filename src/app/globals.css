@@ -1,26 +1,250 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* ── DESIGN.md brand accents (Vercel-inspired) ── */
+  --color-canvas: var(--canvas);
+  --color-canvas-soft: var(--canvas-soft);
+  --color-canvas-soft-2: var(--canvas-soft-2);
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-mute: var(--mute);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-link: var(--link);
+  --color-link-deep: var(--link-deep);
+  --color-cyan: var(--cyan);
+  --color-violet: var(--violet);
+  --color-pink: var(--pink);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  /* rating dimensions: 甜 sweet / 涼 cool / loading 負擔 / 品質 quality / 給分 grading */
+  --color-rate-sweet: var(--rate-sweet);
+  --color-rate-cool: var(--rate-cool);
+  --color-rate-load: var(--rate-load);
+  --color-rate-quality: var(--rate-quality);
+  --color-rate-grading: var(--rate-grading);
+  /* gradient stops */
+  --color-grad-develop-start: #007cf0;
+  --color-grad-develop-end: #00dfd8;
+  --color-grad-preview-start: #7928ca;
+  --color-grad-preview-end: #ff0080;
+  --color-grad-ship-start: #ff4d4d;
+  --color-grad-ship-end: #f9cb28;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-pill: 100px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* surfaces: page sits on canvas-soft, cards on pure white (DESIGN.md ladder) */
+  --background: #fafafa;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #171717;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #888888;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #ee0000;
+  --border: #ebebeb;
+  --input: #ebebeb;
+  --ring: #a1a1a1;
+  --chart-1: #007cf0;
+  --chart-2: #7928ca;
+  --chart-3: #50e3c2;
+  --chart-4: #f5a623;
+  --chart-5: #ff0080;
+  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #ebebeb;
+  --sidebar-ring: #a1a1a1;
+
+  /* brand accent palette */
+  --canvas: #ffffff;
+  --canvas-soft: #fafafa;
+  --canvas-soft-2: #f5f5f5;
+  --ink: #171717;
+  --body: #4d4d4d;
+  --mute: #888888;
+  --hairline: #ebebeb;
+  --hairline-strong: #a1a1a1;
+  --link: #0070f3;
+  --link-deep: #0761d1;
+  --cyan: #29bc9b;
+  --violet: #7928ca;
+  --pink: #ff0080;
+  --warning: #f5a623;
+  --warning-soft: #ffefcf;
+  --success: #0070f3;
+  --rate-sweet: #ff0080;
+  --rate-cool: #00dfd8;
+  --rate-load: #f5a623;
+  --rate-quality: #7928ca;
+  --rate-grading: #0070f3;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --card: #171717;
+  --card-foreground: #ededed;
+  --popover: #171717;
+  --popover-foreground: #ededed;
+  --primary: #ededed;
+  --primary-foreground: #171717;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #ededed;
+  --muted: #1f1f1f;
+  --muted-foreground: #a1a1a1;
+  --accent: #1f1f1f;
+  --accent-foreground: #ededed;
+  --destructive: #ff5555;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #555555;
+  --chart-1: #007cf0;
+  --chart-2: #7928ca;
+  --chart-3: #50e3c2;
+  --chart-4: #f5a623;
+  --chart-5: #ff0080;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #ededed;
+  --sidebar-primary: #ededed;
+  --sidebar-primary-foreground: #171717;
+  --sidebar-accent: #1f1f1f;
+  --sidebar-accent-foreground: #ededed;
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #555555;
+
+  --canvas: #0a0a0a;
+  --canvas-soft: #111111;
+  --canvas-soft-2: #1a1a1a;
+  --ink: #ededed;
+  --body: #a1a1a1;
+  --mute: #888888;
+  --hairline: #262626;
+  --hairline-strong: #404040;
+  --link: #3291ff;
+  --link-deep: #0070f3;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  ::selection {
+    background: #171717;
+    color: #f2f2f2;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Vercel stacked-shadow elevation ladder (DESIGN.md) */
+  .elev-1 {
+    box-shadow: 0 0 0 1px #00000014;
+  }
+  .elev-2 {
+    box-shadow:
+      0 0 0 1px #00000014,
+      0px 1px 1px #00000005,
+      0px 2px 2px #0000000a;
+  }
+  .elev-3 {
+    box-shadow:
+      0 0 0 1px #00000014,
+      0px 2px 2px #0000000a,
+      0px 8px 8px -8px #0000000a;
+  }
+  .elev-4 {
+    box-shadow:
+      0 0 0 1px #00000014,
+      0px 2px 2px #0000000a,
+      0px 8px 16px -4px #0000000a;
+  }
+  .elev-5 {
+    box-shadow:
+      0 0 0 1px #00000014,
+      0px 1px 1px #00000005,
+      0px 8px 16px -4px #0000000a,
+      0px 24px 32px -8px #0000000f;
+  }
+
+  /* the brand mesh gradient — hero scale only */
+  .mesh-gradient {
+    background:
+      radial-gradient(at 20% 25%, #007cf0 0px, transparent 50%),
+      radial-gradient(at 75% 15%, #00dfd8 0px, transparent 50%),
+      radial-gradient(at 80% 70%, #ff0080 0px, transparent 50%),
+      radial-gradient(at 25% 80%, #7928ca 0px, transparent 50%),
+      radial-gradient(at 55% 50%, #f9cb28 0px, transparent 55%);
+    filter: blur(8px);
+  }
+
+  /* animated rating-bar fill (paired with hyperframes/anime for entrance) */
+  .rating-bar-fill {
+    transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }
