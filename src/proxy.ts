@@ -1,15 +1,12 @@
-import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-export async function proxy(request: NextRequest) {
-  return updateSession(request);
-}
+export default clerkMiddleware();
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except static assets and image optimizer.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Skip Next.js internals and static files, unless in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
   ],
 };
