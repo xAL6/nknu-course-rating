@@ -51,3 +51,5 @@ tmp*.json
 
 # pinned CA
 supabase/.supabase-ca.pem
+
+crawl-*.log
