@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RatingSummaryBars } from "@/components/rating-summary";
 import { ReviewVotes } from "@/components/review-votes";
+import { AddToTimetable } from "@/components/add-to-timetable";
 import { formatSlots } from "@/lib/schedule";
 import { SEMESTER_TERMS, RATING_DIMENSIONS } from "@/lib/config";
 import { getCourse } from "@/lib/data/courses";
@@ -88,16 +89,29 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                       {o.enrollCount}/{o.enrollCap}
                     </span>
                   )}
-                  {o.syllabusUrl && (
-                    <a
-                      href={o.syllabusUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="ml-auto flex items-center gap-1 text-link hover:underline"
-                    >
-                      課程大綱 <ExternalLink className="size-3" />
-                    </a>
-                  )}
+                  <div className="ml-auto flex items-center gap-3">
+                    {o.syllabusUrl && (
+                      <a
+                        href={o.syllabusUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-link hover:underline"
+                      >
+                        課程大綱 <ExternalLink className="size-3" />
+                      </a>
+                    )}
+                    <AddToTimetable
+                      course={{
+                        courseCode: course.courseCode,
+                        syllabusNo: o.syllabusNo,
+                        name: course.name,
+                        teachers: o.teachers,
+                        classroom: o.classroom,
+                        semesterId: o.semesterId,
+                        slots: o.slots,
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
