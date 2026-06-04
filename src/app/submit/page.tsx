@@ -13,9 +13,10 @@ type SP = { [k: string]: string | string[] | undefined };
 export default async function SubmitPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const code = Array.isArray(sp.course) ? sp.course[0] : sp.course;
+  const n = Array.isArray(sp.n) ? sp.n[0] : sp.n;
   if (!code) notFound();
 
-  const course = await getCourse(decodeURIComponent(code));
+  const course = await getCourse(decodeURIComponent(code), n);
   if (!course) notFound();
 
   const user = await getCurrentUser();

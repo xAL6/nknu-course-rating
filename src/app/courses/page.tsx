@@ -10,50 +10,44 @@ export const metadata = { title: "課程搜尋" };
 type SP = { [k: string]: string | string[] | undefined };
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+const KEYS = ["q", "semester", "dayNight", "campus", "level", "dept", "classCode"] as const;
+
 export default async function CoursesPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const page = Number(str(sp.page) ?? "1") || 1;
-  const result = await listCourses({
-    q: str(sp.q),
-    dept: str(sp.dept),
-    semester: str(sp.semester),
-    level: str(sp.level),
-    page,
-  });
+  const current = Object.fromEntries(KEYS.map((k) => [k, str(sp[k])]));
+
+  const result = await listCourses({ ...current, page });
 
   const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));
   const mkHref = (p: number) => {
     const next = new URLSearchParams();
-    if (str(sp.q)) next.set("q", str(sp.q)!);
-    if (str(sp.dept)) next.set("dept", str(sp.dept)!);
-    if (str(sp.semester)) next.set("semester", str(sp.semester)!);
-    if (str(sp.level)) next.set("level", str(sp.level)!);
+    for (const k of KEYS) if (current[k]) next.set(k, current[k]!);
     next.set("page", String(p));
     return `/courses?${next.toString()}`;
   };
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-10">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">課程搜尋</h1>
-          <p className="mt-1 text-sm text-body">
-            共 {result.total} 門課程 · {str(sp.q) ? `「${str(sp.q)}」的結果` : "瀏覽全部"}
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">課程搜尋</h1>
+        <p className="mt-1 text-sm text-body">
+          共 {result.total} 門課程 · {current.q ? `「${current.q}」的結果` : "依條件篩選"}
+        </p>
       </div>
 
       <div className="mt-6">
         <CoursesFilter
-          departments={result.departments}
           semesters={result.semesters}
           levels={result.levels}
-          current={{ q: str(sp.q), dept: str(sp.dept), semester: str(sp.semester), level: str(sp.level) }}
+          departments={result.departments}
+          classes={result.classes}
+          current={current}
         />
       </div>
 
       {result.items.length === 0 ? (
-        <div className="mt-16 rounded-lg bg-canvas-soft p-12 text-center">
+        <div className="mt-12 rounded-lg bg-canvas-soft p-12 text-center">
           <p className="text-body">找不到符合條件的課程。</p>
           <Button render={<Link href="/courses" />} nativeButton={false} variant="outline" className="mt-4 rounded-full">
             清除篩選
@@ -62,7 +56,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {result.items.map((c) => (
-            <CourseCard key={c.courseCode} course={c} />
+            <CourseCard key={`${c.courseCode} ${c.name}`} course={c} />
           ))}
         </div>
       )}

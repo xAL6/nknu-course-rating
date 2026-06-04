@@ -50,6 +50,26 @@ export const SEMESTER_TERMS: Record<string, string> = {
   "3": "暑期",
 };
 
+/** 學制 (uDeformType) — matches the NKNU form. */
+export const DEGREE_LEVELS = [
+  { code: "1", name: "大學部" },
+  { code: "2", name: "碩士班" },
+  { code: "3", name: "博士班" },
+  { code: "G", name: "通識/軍訓/體育" },
+  { code: "S", name: "學院開課" },
+  { code: "H", name: "學程課/第二專長" },
+] as const;
+
+export const DAY_NIGHT_OPTIONS = [
+  { value: "D", label: "日間" },
+  { value: "N", label: "進修" },
+] as const;
+
+export const CAMPUS_OPTIONS = [
+  { value: "和平", label: "和平" },
+  { value: "燕巢", label: "燕巢" },
+] as const;
+
 /** Random anonymized handle for first-time profiles, e.g. "綠色的椰子371". */
 export function randomDisplayName(): string {
   const colors = ["紅", "橙", "黃", "綠", "藍", "靛", "紫", "青", "棕", "灰"];
