@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "crawl": "tsx --env-file=.env.local scripts/scraper/crawl.ts",
-    "migrate": "tsx --env-file=.env.local scripts/migrate.ts"
+    "migrate": "tsx --env-file=.env.local scripts/migrate.ts",
+    "delete-semester": "tsx --env-file=.env.local scripts/delete-semester.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",
