@@ -9,7 +9,9 @@
     "lint": "eslint",
     "crawl": "tsx --env-file=.env.local scripts/scraper/crawl.ts",
     "migrate": "tsx --env-file=.env.local scripts/migrate.ts",
-    "delete-semester": "tsx --env-file=.env.local scripts/delete-semester.ts"
+    "delete-semester": "tsx --env-file=.env.local scripts/delete-semester.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",
@@ -48,6 +50,7 @@
     "pg": "^8.21.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.8"
   }
 }
