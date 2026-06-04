@@ -62,7 +62,18 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                   className="elev-1 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-canvas px-4 py-3 text-sm"
                 >
                   <span className="font-mono text-xs text-mute">{semLabel(o.semesterId)}</span>
-                  <span className="font-medium">{o.teachers.join("、") || "待聘"}</span>
+                  <span className="font-medium">
+                    {o.teachers.length
+                      ? o.teachers.map((t, i) => (
+                          <span key={t}>
+                            {i > 0 && "、"}
+                            <Link href={`/teacher/${encodeURIComponent(t)}`} className="hover:text-link hover:underline">
+                              {t}
+                            </Link>
+                          </span>
+                        ))
+                      : "待聘"}
+                  </span>
                   {o.courseType && <Badge variant="secondary">{o.courseType}</Badge>}
                   <span className="text-body">{formatSlots(o.slots)}</span>
                   {o.classroom && (

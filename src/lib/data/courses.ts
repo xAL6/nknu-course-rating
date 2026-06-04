@@ -15,7 +15,7 @@ export function isSupabaseConfigured(): boolean {
 const FIXTURE = fixtureJson as unknown as Offering[];
 
 // ── Row mapping (Supabase) ──
-type CourseRow = {
+export type CourseRow = {
   syllabus_no: string | null;
   course_code: string;
   name: string;
@@ -38,7 +38,7 @@ type CourseRow = {
   course_teachers?: { teachers: { name: string } | null }[];
 };
 
-function rowToOffering(r: CourseRow): Offering {
+export function rowToOffering(r: CourseRow): Offering {
   return {
     syllabusNo: r.syllabus_no,
     courseCode: r.course_code,
@@ -61,9 +61,9 @@ function rowToOffering(r: CourseRow): Offering {
   };
 }
 
-const SELECT = "*, departments(name), course_teachers(teachers(name))";
+export const SELECT = "*, departments(name), course_teachers(teachers(name))";
 
-function groupByCode(offerings: Offering[]): CourseGroup[] {
+export function groupByCode(offerings: Offering[]): CourseGroup[] {
   const map = new Map<string, Offering[]>();
   for (const o of offerings) {
     const arr = map.get(o.courseCode) ?? [];
