@@ -32,7 +32,7 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
       {!user ? (
         <div className="mt-8 rounded-lg bg-canvas-soft p-8 text-center">
           <p className="text-sm text-body">請先以高師大信箱登入才能撰寫評價。</p>
-          <Button render={<Link href="/sign-in" />} nativeButton={false} className="mt-4 rounded-full">
+          <Button render={<Link href="/auth" />} nativeButton={false} className="mt-4 rounded-full">
             前往登入
           </Button>
         </div>
