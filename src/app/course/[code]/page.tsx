@@ -103,10 +103,15 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                       : "待聘"}
                   </span>
                   {o.courseType && <Badge variant="secondary">{o.courseType}</Badge>}
+                  {o.className && <span className="text-mute">{o.className}</span>}
+                  {o.dayNight && (
+                    <span className="text-mute">{o.dayNight === "N" ? "進修" : "日間"}</span>
+                  )}
                   <span className="text-body">{formatSlots(o.slots)}</span>
                   {o.classroom && (
                     <span className="flex items-center gap-1 text-mute">
                       <MapPin className="size-3" />
+                      {o.campus ? `${o.campus}・` : ""}
                       {o.classroom}
                     </span>
                   )}

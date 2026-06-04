@@ -35,7 +35,9 @@ type Enriched = CourseRecord & {
   departmentCode: string;
   departmentName: string;
   degreeLevel: string;
+  degreeLevelCode: string;
   dayNight: string;
+  classCode: string | null;
 };
 
 async function main() {
@@ -118,10 +120,15 @@ async function main() {
                   seen.add(key);
                   all.push({
                     ...r,
+                    // 系級/班級 from the searched uClass (authoritative grouping);
+                    // 必修 are locked under a specific 班級, 全年級 holds 選修.
+                    className: klass?.label ?? r.className,
+                    classCode: klass?.value ?? null,
                     semesterId,
                     departmentCode: dept.value,
                     departmentName: dept.label,
                     degreeLevel: deform.label.replace(/^[A-Za-z0-9/]+[:：]\s*/, ""),
+                    degreeLevelCode: deform.value,
                     dayNight: dn,
                   });
                   deptCount++;

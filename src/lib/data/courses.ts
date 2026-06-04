@@ -26,6 +26,7 @@ export type CourseRow = {
   category: string | null;
   department_code: string | null;
   class_name: string | null;
+  class_code: string | null;
   semester_id: string;
   campus: string | null;
   day_night: string | null;
@@ -55,12 +56,14 @@ export function rowToOffering(r: CourseRow): Offering {
     classTimeRaw: r.class_time_raw,
     slots: r.slots ?? [],
     classroom: r.classroom,
+    campus: r.campus ?? null,
     enrollCount: r.enroll_count,
     enrollCap: r.enroll_cap,
     syllabusUrl: r.syllabus_url,
     semesterId: r.semester_id,
     departmentCode: r.department_code ?? "",
     departmentName: r.departments?.name ?? "",
+    classCode: r.class_code ?? null,
     degreeLevel: r.degree_level ?? null,
     dayNight: r.day_night ?? null,
   };
