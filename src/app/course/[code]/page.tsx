@@ -12,7 +12,7 @@ import { SEMESTER_TERMS, RATING_DIMENSIONS } from "@/lib/config";
 import { getCourse } from "@/lib/data/courses";
 import { getReviews, getRatingSummary } from "@/lib/data/reviews";
 import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -34,7 +34,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
   let bookmarked = false;
   const user = await getCurrentUser();
   if (user && bookmarkCourseId) {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { data } = await supabase
       .from("bookmarks")
       .select("course_id")

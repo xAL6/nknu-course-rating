@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Bookmark, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { SEMESTER_TERMS } from "@/lib/config";
 
@@ -20,7 +20,7 @@ export default async function MePage() {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const [{ data: reviews }, { data: bookmarks }] = await Promise.all([
     supabase
       .from("reviews")
