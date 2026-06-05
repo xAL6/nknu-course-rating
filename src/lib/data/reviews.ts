@@ -3,6 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "./courses";
 import type { RatingSummary } from "./types";
 
+export type Comment = {
+  id: string;
+  displayName: string;
+  body: string;
+  createdAt: string;
+};
+
 export type Review = {
   id: string;
   displayName: string;
@@ -19,6 +26,7 @@ export type Review = {
   usefulCount: number;
   createdAt: string;
   userId: string;
+  comments: Comment[];
 };
 
 /** Reviews for a logical course (by course_key), each tagged with its teacher_key. */
@@ -27,7 +35,9 @@ export async function getReviews(courseKey: string): Promise<Review[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("reviews")
-    .select("*, courses!inner(course_key, teacher_key)")
+    .select(
+      "*, courses!inner(course_key, teacher_key), comments(id, body, display_name, created_at)",
+    )
     .eq("courses.course_key", courseKey)
     .order("created_at", { ascending: false });
 
@@ -47,6 +57,19 @@ export async function getReviews(courseKey: string): Promise<Review[]> {
     usefulCount: r.useful_count ?? 0,
     createdAt: r.created_at,
     userId: r.user_id,
+    comments: ((r.comments as unknown as {
+      id: string;
+      body: string;
+      display_name: string | null;
+      created_at: string;
+    }[]) ?? [])
+      .map((c) => ({
+        id: c.id,
+        displayName: c.display_name ?? "匿名",
+        body: c.body,
+        createdAt: c.created_at,
+      }))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
   }));
 }
 

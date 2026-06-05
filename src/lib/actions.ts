@@ -121,9 +121,12 @@ export async function voteReview(reviewId: string, kind: string, courseKey: stri
 }
 
 export async function addComment(reviewId: string, body: string, courseKey: string) {
-  const { supabase, user } = await requireUser();
+  const { supabase, user, displayName } = await requireUser();
   const text = z.string().min(1).max(2000).parse(body);
-  await supabase.from("comments").insert({ review_id: reviewId, user_id: user.id, body: text });
+  const { error } = await supabase
+    .from("comments")
+    .insert({ review_id: reviewId, user_id: user.id, body: text, display_name: displayName });
+  if (error) throw error;
   revalidatePath(`/course/${courseKey}`);
   return { ok: true };
 }

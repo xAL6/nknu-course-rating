@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RatingSummaryBars } from "@/components/rating-summary";
 import { ReviewVotes } from "@/components/review-votes";
+import { ReviewComments } from "@/components/review-comments";
 import { AddToTimetable } from "@/components/add-to-timetable";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { formatSlots } from "@/lib/schedule";
@@ -224,6 +225,12 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                         </div>
                         {r.shortComment && <p className="mt-2 text-sm font-medium">{r.shortComment}</p>}
                         {r.body && <p className="mt-1 text-sm whitespace-pre-wrap text-body">{r.body}</p>}
+                        <ReviewComments
+                          reviewId={r.id}
+                          courseKey={course.courseKey}
+                          initial={r.comments}
+                          canComment={!!user?.allowed}
+                        />
                       </article>
                     ))}
                   </div>
