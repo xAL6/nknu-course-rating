@@ -130,6 +130,21 @@ export type CourseListResult = {
 
 const LEVEL_FACETS: Facet[] = DEGREE_LEVELS.map((l) => ({ code: l.code, name: l.name }));
 
+/** The most recent semester id (e.g. "114-1"), or null if unconfigured/empty. */
+export async function latestSemester(): Promise<string | null> {
+  if (!isSupabaseConfigured()) {
+    return [...FIXTURE.map((o) => o.semesterId)].sort((a, b) => b.localeCompare(a))[0] ?? null;
+  }
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("semesters")
+    .select("id")
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.id as string) ?? null;
+}
+
 export async function listCourses(params: CourseListParams): Promise<CourseListResult> {
   if (!isSupabaseConfigured()) return listFromFixture(params);
   const { q, dayNight, campus, level, dept, classCode, page = 1, pageSize = 24 } = params;
@@ -141,6 +156,15 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
     .order("id", { ascending: false });
   const semesters = (semRows ?? []).map((s) => s.id as string);
   const sem = params.semester || semesters[0];
+
+  // A free-text query (with no explicit semester chosen) searches across ALL
+  // semesters, ranked by trigram similarity — see migration 0012.
+  if (q && q.trim() && !params.semester) {
+    return searchCoursesRanked({ q: q.trim(), dayNight, campus, level, dept, page, pageSize }, {
+      semesters,
+      supabase,
+    });
+  }
 
   // Cascading facets (DISTINCT server-side via RPC).
   const [{ data: deptRows }, classRes] = await Promise.all([
@@ -206,6 +230,77 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
     levels: LEVEL_FACETS,
     departments,
     classes,
+  };
+}
+
+type RankedDeps = {
+  semesters: string[];
+  supabase: Awaited<ReturnType<typeof createClient>>;
+};
+
+/** Cross-semester, trigram-ranked search (migration 0012 `search_courses`). */
+async function searchCoursesRanked(
+  p: {
+    q: string;
+    dayNight?: string;
+    campus?: string;
+    level?: string;
+    dept?: string;
+    page: number;
+    pageSize: number;
+  },
+  deps: RankedDeps,
+): Promise<CourseListResult> {
+  const { supabase, semesters } = deps;
+  const { data: ranked } = await supabase.rpc("search_courses", { p_q: p.q, p_limit: 90 });
+  const rows = (ranked ?? []) as { course_key: string; rank: number }[];
+  const rankOf = new Map(rows.map((r, i) => [r.course_key, { rank: r.rank, order: i }]));
+  const keys = rows.map((r) => r.course_key);
+
+  let offerings: Offering[] = [];
+  if (keys.length) {
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      let query = supabase
+        .from("courses")
+        .select(SELECT)
+        .in("course_key", keys)
+        .order("semester_id", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (p.dayNight) query = query.eq("day_night", p.dayNight);
+      if (p.campus) query = query.eq("campus", p.campus);
+      if (p.level) query = query.eq("degree_level_code", p.level);
+      if (p.dept) query = query.eq("department_code", p.dept);
+      const { data } = await query;
+      const batch = (data ?? []).map((r) => rowToOffering(r as unknown as CourseRow));
+      offerings.push(...batch);
+      if (batch.length < PAGE) break;
+    }
+  }
+
+  const groups = groupCourses(offerings).sort((a, b) => {
+    const ra = rankOf.get(a.courseKey)?.order ?? Infinity;
+    const rb = rankOf.get(b.courseKey)?.order ?? Infinity;
+    return ra - rb;
+  });
+
+  // Departments present in the result set (so the filter still offers a choice).
+  const departments = [
+    ...new Map(
+      offerings.filter((o) => o.departmentCode).map((o) => [o.departmentCode, o.departmentName]),
+    ).entries(),
+  ].map(([code, name]) => ({ code, name }));
+
+  const start = (p.page - 1) * p.pageSize;
+  return {
+    items: groups.slice(start, start + p.pageSize),
+    total: groups.length,
+    page: p.page,
+    pageSize: p.pageSize,
+    semesters,
+    levels: LEVEL_FACETS,
+    departments,
+    classes: [],
   };
 }
 
