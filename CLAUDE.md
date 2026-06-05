@@ -1,5 +1,3 @@
-@AGENTS.md
-
 # NKNU 選課評價 (NKNU Course Rating Platform)
 
 A course-rating + timetable platform for National Kaohsiung Normal University (高雄師範大學).
