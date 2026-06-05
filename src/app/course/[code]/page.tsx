@@ -183,6 +183,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                         <AddToTimetable
                           course={{
                             courseCode: course.courseCode,
+                            courseKey: course.courseKey,
                             syllabusNo: o.syllabusNo,
                             name: course.name,
                             teachers: o.teachers,

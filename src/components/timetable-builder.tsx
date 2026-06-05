@@ -1,17 +1,30 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import Link from "next/link";
-import { Search, Plus, X, Trash2, AlertTriangle } from "lucide-react";
+import { Search, Plus, X, Trash2, AlertTriangle, Share2, Save, CalendarRange } from "lucide-react";
+import { toast } from "sonner";
 import {
   useTimetable,
   addToTimetable,
   removeFromTimetable,
   clearTimetable,
+  replaceTimetable,
+  timetableSemester,
+  encodeShare,
+  decodeShare,
   buildSlotMap,
   type TimetableCourse,
 } from "@/lib/timetable-store";
+import { saveTimetable, loadTimetable } from "@/lib/actions";
+import { SEMESTER_TERMS } from "@/lib/config";
 import { WEEKDAY_LABELS, PERIOD_TIMES } from "@/lib/period-shared";
+
+const semLabel = (id: string | null) => {
+  if (!id) return null;
+  const [y, t] = id.split("-");
+  return `${y} ${SEMESTER_TERMS[t] ?? t}`;
+};
 
 const PERIODS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "A", "B", "C", "D"];
 const WEEKDAYS = [1, 2, 3, 4, 5, 6];
@@ -36,10 +49,25 @@ export function TimetableBuilder() {
   const courses = useTimetable();
   const slotMap = buildSlotMap(courses);
   const hasConflict = [...slotMap.values()].some((arr) => arr.length > 1);
+  const semester = timetableSemester(courses);
+
+  // Import a shared timetable from the URL (?s=token) once on mount.
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("s");
+    if (!token) return;
+    const imported = decodeShare(token);
+    if (imported && imported.length) {
+      replaceTimetable(imported);
+      toast.success(`已載入分享的課表（${imported.length} 門）`);
+    }
+    // Clean the URL so a refresh doesn't re-import.
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="min-w-0">
+        <Toolbar courses={courses} semester={semester} />
         {hasConflict && (
           <div className="mb-3 flex items-center gap-2 rounded-md border border-warning-soft bg-warning-soft/50 px-3 py-2 text-sm text-warning-deep">
             <AlertTriangle className="size-4" /> 課表有衝堂，紅色格子為衝突時段。
@@ -49,9 +77,93 @@ export function TimetableBuilder() {
       </div>
 
       <aside className="space-y-4">
-        <AddPanel />
+        <AddPanel semester={semester} />
         <SelectedList courses={courses} />
       </aside>
+    </div>
+  );
+}
+
+function Toolbar({
+  courses,
+  semester,
+}: {
+  courses: TimetableCourse[];
+  semester: string | null;
+}) {
+  const [saving, startSave] = useTransition();
+  const [loadingAcct, startLoad] = useTransition();
+
+  async function share() {
+    if (!courses.length) {
+      toast("課表是空的，先加入課程吧。");
+      return;
+    }
+    const url = `${window.location.origin}/timetable?s=${encodeShare(courses)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("分享連結已複製到剪貼簿");
+    } catch {
+      toast.error("無法複製，請手動複製網址列。");
+    }
+  }
+
+  function save() {
+    startSave(async () => {
+      try {
+        const res = await saveTimetable(courses);
+        toast.success(`已儲存到帳號（${res.count} 門）`);
+      } catch {
+        toast.error("請先以高師大信箱登入才能儲存。");
+      }
+    });
+  }
+
+  function loadAccount() {
+    startLoad(async () => {
+      try {
+        const saved = await loadTimetable();
+        if (!saved || !saved.courses.length) {
+          toast("帳號中沒有已儲存的課表。");
+          return;
+        }
+        replaceTimetable(saved.courses as TimetableCourse[]);
+        toast.success(`已載入帳號課表（${saved.courses.length} 門）`);
+      } catch {
+        toast.error("載入失敗，請先登入。");
+      }
+    });
+  }
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2">
+      {semester && (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-canvas-soft px-3 py-1 text-xs font-medium text-body">
+          <CalendarRange className="size-3.5" /> {semLabel(semester)}・本學期
+        </span>
+      )}
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={share}
+          className="flex items-center gap-1 rounded-full border border-hairline px-3 py-1 text-xs text-body transition-colors hover:bg-secondary"
+        >
+          <Share2 className="size-3.5" /> 分享
+        </button>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex items-center gap-1 rounded-full border border-hairline px-3 py-1 text-xs text-body transition-colors hover:bg-secondary disabled:opacity-50"
+        >
+          <Save className="size-3.5" /> 儲存
+        </button>
+        <button
+          onClick={loadAccount}
+          disabled={loadingAcct}
+          className="flex items-center gap-1 rounded-full border border-hairline px-3 py-1 text-xs text-body transition-colors hover:bg-secondary disabled:opacity-50"
+        >
+          載入
+        </button>
+      </div>
     </div>
   );
 }
@@ -95,7 +207,7 @@ function Grid({
                     {here.map((c) => (
                       <Link
                         key={c.courseCode + c.syllabusNo}
-                        href={`/course/${encodeURIComponent(c.courseCode)}`}
+                        href={`/course/${encodeURIComponent(c.courseKey || c.courseCode)}`}
                         className="mb-0.5 block rounded px-1 py-0.5 text-left text-[11px] leading-tight text-white"
                         style={{ backgroundColor: conflict ? "var(--error)" : colorFor(c.courseCode) }}
                         title={`${c.name}${c.classroom ? ` · ${c.classroom}` : ""}`}
@@ -114,7 +226,7 @@ function Grid({
   );
 }
 
-function AddPanel() {
+function AddPanel({ semester }: { semester: string | null }) {
   const [q, setQ] = useState("");
   const [items, setItems] = useState<SearchItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -129,14 +241,17 @@ function AddPanel() {
     t.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/courses/search?q=${encodeURIComponent(q)}`);
+        // Once a timetable is locked to a semester, scope the search to it.
+        const qs = new URLSearchParams({ q });
+        if (semester) qs.set("semester", semester);
+        const res = await fetch(`/api/courses/search?${qs.toString()}`);
         const data = await res.json();
         setItems(data.items ?? []);
       } finally {
         setLoading(false);
       }
     }, 300);
-  }, [q]);
+  }, [q, semester]);
 
   return (
     <div className="elev-2 rounded-lg bg-canvas p-4">
@@ -156,17 +271,22 @@ function AddPanel() {
           items.map((it) => (
             <button
               key={it.courseCode + it.syllabusNo}
-              onClick={() =>
-                addToTimetable({
+              onClick={() => {
+                const res = addToTimetable({
                   courseCode: it.courseCode,
+                  courseKey: it.courseKey,
                   syllabusNo: it.syllabusNo,
                   name: it.name,
                   teachers: it.teachers,
                   classroom: it.classroom,
                   semesterId: it.semesterId,
                   slots: it.slots,
-                })
-              }
+                });
+                if (res.ok) toast.success("已加入課表");
+                else if (res.reason === "semester")
+                  toast.error("課表已鎖定其他學期，請先清空再加入。");
+                else toast("這門課已在課表中");
+              }}
               className="flex w-full items-start gap-2 rounded-md p-2 text-left text-xs transition-colors hover:bg-secondary"
             >
               <Plus className="mt-0.5 size-3.5 shrink-0 text-link" />

@@ -5,6 +5,7 @@ import type { Slot } from "./data/types";
 
 export type TimetableCourse = {
   courseCode: string;
+  courseKey?: string;
   syllabusNo: string | null;
   name: string;
   teachers: string[];
@@ -62,10 +63,27 @@ export function useTimetable() {
   return courses;
 }
 
-export function addToTimetable(course: TimetableCourse) {
+export type AddResult = { ok: boolean; reason?: "duplicate" | "semester" };
+
+/** The semester a timetable is locked to (the first course's), or null if empty. */
+export function timetableSemester(courses: TimetableCourse[]): string | null {
+  return courses[0]?.semesterId ?? null;
+}
+
+export function addToTimetable(course: TimetableCourse): AddResult {
   const cur = read();
-  if (cur.some((c) => c.syllabusNo === course.syllabusNo && c.courseCode === course.courseCode)) return;
+  if (cur.some((c) => c.syllabusNo === course.syllabusNo && c.courseCode === course.courseCode)) {
+    return { ok: false, reason: "duplicate" };
+  }
+  // A timetable is scoped to one semester; reject cross-semester adds.
+  const sem = timetableSemester(cur);
+  if (sem && course.semesterId !== sem) return { ok: false, reason: "semester" };
   write([...cur, course]);
+  return { ok: true };
+}
+
+export function replaceTimetable(courses: TimetableCourse[]) {
+  write(courses);
 }
 
 export function removeFromTimetable(key: { courseCode: string; syllabusNo: string | null }) {
@@ -97,4 +115,34 @@ export function buildSlotMap(courses: TimetableCourse[]) {
 export function totalCredits(courses: TimetableCourse[]): number {
   // credits aren't carried in slots; computed elsewhere if needed.
   return courses.length;
+}
+
+// ── Share-link codec (URL-safe base64 of the minimal course payload) ──
+
+function toUrlB64(s: string): string {
+  const b64 = typeof window === "undefined" ? Buffer.from(s, "utf8").toString("base64") : btoa(unescape(encodeURIComponent(s)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function fromUrlB64(s: string): string {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  return typeof window === "undefined"
+    ? Buffer.from(b64, "base64").toString("utf8")
+    : decodeURIComponent(escape(atob(b64)));
+}
+
+export function encodeShare(courses: TimetableCourse[]): string {
+  return toUrlB64(JSON.stringify(courses));
+}
+
+export function decodeShare(token: string): TimetableCourse[] | null {
+  try {
+    const parsed = JSON.parse(fromUrlB64(token));
+    if (!Array.isArray(parsed)) return null;
+    // Light validation: each entry must carry slots + identity.
+    return parsed.filter(
+      (c) => c && typeof c.courseCode === "string" && Array.isArray(c.slots),
+    ) as TimetableCourse[];
+  } catch {
+    return null;
+  }
 }
