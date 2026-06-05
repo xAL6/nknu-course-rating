@@ -7,6 +7,7 @@ export type Review = {
   id: string;
   displayName: string;
   semesterId: string | null;
+  teacherKey: string;
   sweetness: number | null;
   coolness: number | null;
   loading: number | null;
@@ -20,13 +21,13 @@ export type Review = {
   userId: string;
 };
 
-/** Reviews for a logical course (by course_key). Empty if no DB yet. */
+/** Reviews for a logical course (by course_key), each tagged with its teacher_key. */
 export async function getReviews(courseKey: string): Promise<Review[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("reviews")
-    .select("*, courses!inner(course_key)")
+    .select("*, courses!inner(course_key, teacher_key)")
     .eq("courses.course_key", courseKey)
     .order("created_at", { ascending: false });
 
@@ -34,6 +35,7 @@ export async function getReviews(courseKey: string): Promise<Review[]> {
     id: r.id,
     displayName: r.display_name,
     semesterId: r.semester_id,
+    teacherKey: (r.courses as unknown as { teacher_key: string } | null)?.teacher_key ?? "",
     sweetness: r.sweetness,
     coolness: r.coolness,
     loading: r.loading,
@@ -48,21 +50,25 @@ export async function getReviews(courseKey: string): Promise<Review[]> {
   }));
 }
 
-export async function getRatingSummary(courseKey: string): Promise<RatingSummary | null> {
-  if (!isSupabaseConfigured()) return null;
+export type TeacherSummary = { teacherKey: string; summary: RatingSummary };
+
+/** Per-teacher rating summaries for a course (keyed by teacher_key). */
+export async function getTeacherSummaries(courseKey: string): Promise<TeacherSummary[]> {
+  if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("course_rating_summary")
     .select("*")
-    .eq("course_key", courseKey)
-    .maybeSingle();
-  if (!data) return null;
-  return {
-    reviewCount: data.review_count ?? 0,
-    sweetness: data.avg_sweetness,
-    coolness: data.avg_coolness,
-    loading: data.avg_loading,
-    quality: data.avg_quality,
-    grading: data.avg_grading,
-  };
+    .eq("course_key", courseKey);
+  return (data ?? []).map((d) => ({
+    teacherKey: d.teacher_key as string,
+    summary: {
+      reviewCount: d.review_count ?? 0,
+      sweetness: d.avg_sweetness,
+      coolness: d.avg_coolness,
+      loading: d.avg_loading,
+      quality: d.avg_quality,
+      grading: d.avg_grading,
+    },
+  }));
 }

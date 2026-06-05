@@ -15,6 +15,7 @@ export type CourseRow = {
   id?: string;
   syllabus_no: string | null;
   course_key: string | null;
+  teacher_key: string | null;
   course_code: string;
   name: string;
   name_en: string | null;
@@ -43,6 +44,7 @@ export function rowToOffering(r: CourseRow): Offering {
     id: r.id,
     syllabusNo: r.syllabus_no,
     courseKey: r.course_key ?? "",
+    teacherKey: r.teacher_key ?? "",
     courseCode: r.course_code,
     name: r.name,
     nameEn: r.name_en,
