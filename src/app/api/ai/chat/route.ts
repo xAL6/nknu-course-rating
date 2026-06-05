@@ -2,6 +2,8 @@ import { streamText, tool, stepCountIs, convertToModelMessages, type UIMessage }
 import { deepseek } from "@ai-sdk/deepseek";
 import { z } from "zod";
 import { retrieveCourses } from "@/lib/data/ai-search";
+import { createClient } from "@/lib/supabase/server";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -11,7 +13,13 @@ const SYSTEM = `你是「高師大選課助手」，協助高雄師範大學的�
 - 學生用自然語言描述需求（例如「想找輕鬆又有收穫的通識」、「比較某兩位老師」）時，先用 searchCourses 取得資料再回答。
 - 評分面向：甜度(給分甜)、涼度(輕鬆)、負擔(作業考試多寡)、品質(內容紮實)、給分。分數 1–5。
 - 若課程「尚無評價」(reviewCount 為 0)，要誠實說明目前沒有評價資料，只能依課名/教師/學分提供參考。
-- 回答用繁體中文，精簡、條列推薦，並附上課號方便學生查詢。`;
+- 回答用繁體中文，精簡、條列推薦。
+- 提到課程時，務必用 Markdown 連結語法附上課程頁面，格式為 [課名（課號）](/course/courseKey)，courseKey 取自工具回傳的 courseKey 欄位，方便學生點擊查看。`;
+
+// Signed-in NKNU students get a higher allowance than anonymous visitors.
+const ANON_LIMIT = 8; // requests
+const AUTH_LIMIT = 40;
+const WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 export async function POST(req: Request) {
   if (!process.env.DEEPSEEK_API_KEY) {
@@ -19,6 +27,28 @@ export async function POST(req: Request) {
       status: 503,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  // Auth-aware rate limiting (per user when signed in, else per IP).
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const limitKey = user ? `ai:user:${user.id}` : `ai:ip:${clientIp(req)}`;
+  const limit = user ? AUTH_LIMIT : ANON_LIMIT;
+  const rl = rateLimit(limitKey, limit, WINDOW_MS);
+  if (!rl.ok) {
+    const mins = Math.ceil(rl.resetMs / 60000);
+    return new Response(
+      JSON.stringify({ error: "RATE_LIMITED", retryAfterMinutes: mins }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(Math.ceil(rl.resetMs / 1000)),
+        },
+      },
+    );
   }
 
   const { messages }: { messages: UIMessage[] } = await req.json();

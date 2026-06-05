@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RatingSummaryBars } from "@/components/rating-summary";
 import { ReviewVotes } from "@/components/review-votes";
 import { ReviewComments } from "@/components/review-comments";
+import { ReviewSummaryAI } from "@/components/review-summary-ai";
 import { AddToTimetable } from "@/components/add-to-timetable";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { formatSlots } from "@/lib/schedule";
@@ -148,6 +149,12 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                     </div>
                   )}
                 </div>
+
+                <ReviewSummaryAI
+                  courseKey={course.courseKey}
+                  teacherKey={sec.teacherKey}
+                  reviewCount={sec.summary?.reviewCount ?? 0}
+                />
 
                 {/* This teacher's offerings */}
                 <div className="mt-4 space-y-1.5 border-t border-hairline pt-3">

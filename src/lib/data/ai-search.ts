@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { listCourses } from "./courses";
 
 export type AiCourseResult = {
+  courseKey: string;
   courseCode: string;
   name: string;
   nameEn: string | null;
@@ -26,28 +27,45 @@ export type AiCourseResult = {
  */
 export async function retrieveCourses(query: string, department?: string): Promise<AiCourseResult[]> {
   const result = await listCourses({ q: query, dept: department, pageSize: 12 });
-  const codes = result.items.map((c) => c.courseCode);
+  const keys = result.items.map((c) => c.courseKey).filter(Boolean);
 
+  // Aggregate per-teacher summary rows up to the logical course (course_key).
   const summaries = new Map<string, AiCourseResult["rating"]>();
-  if (codes.length) {
+  if (keys.length) {
     const supabase = await createClient();
     const { data } = await supabase
       .from("course_rating_summary")
       .select("*")
-      .in("course_code", codes);
+      .in("course_key", keys);
+    const byKey = new Map<string, { sum: Record<string, number>; n: Record<string, number>; reviews: number }>();
     for (const s of data ?? []) {
-      summaries.set(s.course_code, {
-        reviewCount: s.review_count ?? 0,
-        sweetness: s.avg_sweetness,
-        coolness: s.avg_coolness,
-        loading: s.avg_loading,
-        quality: s.avg_quality,
-        grading: s.avg_grading,
+      const ck = s.course_key as string;
+      const acc = byKey.get(ck) ?? { sum: {}, n: {}, reviews: 0 };
+      acc.reviews += s.review_count ?? 0;
+      for (const k of ["avg_sweetness", "avg_coolness", "avg_loading", "avg_quality", "avg_grading"]) {
+        const v = s[k] as number | null;
+        if (v != null) {
+          acc.sum[k] = (acc.sum[k] ?? 0) + v;
+          acc.n[k] = (acc.n[k] ?? 0) + 1;
+        }
+      }
+      byKey.set(ck, acc);
+    }
+    for (const [ck, acc] of byKey) {
+      const avg = (k: string) => (acc.n[k] ? acc.sum[k] / acc.n[k] : null);
+      summaries.set(ck, {
+        reviewCount: acc.reviews,
+        sweetness: avg("avg_sweetness"),
+        coolness: avg("avg_coolness"),
+        loading: avg("avg_loading"),
+        quality: avg("avg_quality"),
+        grading: avg("avg_grading"),
       });
     }
   }
 
   return result.items.map((c) => ({
+    courseKey: c.courseKey,
     courseCode: c.courseCode,
     name: c.name,
     nameEn: c.nameEn,
@@ -55,6 +73,6 @@ export async function retrieveCourses(query: string, department?: string): Promi
     credits: c.credits,
     departments: c.departments,
     latestSemester: c.latestSemester,
-    rating: summaries.get(c.courseCode) ?? null,
+    rating: summaries.get(c.courseKey) ?? null,
   }));
 }
