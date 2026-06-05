@@ -20,7 +20,16 @@ import type { Offering } from "@/lib/data/types";
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const course = await getCourse(decodeURIComponent(code));
-  return { title: course ? `${course.name}（${course.courseCode}）` : "課程" };
+  if (!course) return { title: "課程" };
+  const title = `${course.name}（${course.courseCode}）`;
+  const teachers = course.teachers.slice(0, 4).join("、");
+  const description = `高師大「${course.name}」課程評價與開課紀錄${teachers ? `・授課教師：${teachers}` : ""}。看看學長姐怎麼說。`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "article" },
+    twitter: { card: "summary", title, description },
+  };
 }
 
 const semLabel = (id: string) => {

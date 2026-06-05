@@ -9,7 +9,15 @@ import { SEMESTER_TERMS } from "@/lib/config";
 
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
-  return { title: `${decodeURIComponent(name)} 教師` };
+  const n = decodeURIComponent(name);
+  const title = `${n} 教師`;
+  const description = `高師大 ${n} 老師的開課與課程評價彙整。`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "profile" },
+    twitter: { card: "summary", title, description },
+  };
 }
 
 export default async function TeacherPage({ params }: { params: Promise<{ name: string }> }) {
