@@ -234,11 +234,11 @@ function AddPanel({ semester }: { semester: string | null }) {
 
   useEffect(() => {
     if (t.current) clearTimeout(t.current);
-    if (q.trim().length < 1) {
-      setItems([]);
-      return;
-    }
     t.current = setTimeout(async () => {
+      if (q.trim().length < 1) {
+        setItems([]);
+        return;
+      }
       setLoading(true);
       try {
         // Once a timetable is locked to a semester, scope the search to it.

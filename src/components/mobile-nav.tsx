@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Menu, X, Sparkles } from "lucide-react";
 
 const LINKS = [
@@ -15,12 +14,9 @@ const LINKS = [
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
 
-  // Close the menu whenever the route changes.
-  useEffect(() => setOpen(false), [pathname]);
-
-  // Lock body scroll while the overlay is open.
+  // Lock body scroll while the overlay is open. (Each nav link also closes the
+  // menu via its own onClick, so route changes dismiss it.)
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {

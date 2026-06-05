@@ -257,7 +257,7 @@ async function searchCoursesRanked(
   const rankOf = new Map(rows.map((r, i) => [r.course_key, { rank: r.rank, order: i }]));
   const keys = rows.map((r) => r.course_key);
 
-  let offerings: Offering[] = [];
+  const offerings: Offering[] = [];
   if (keys.length) {
     const PAGE = 1000;
     for (let from = 0; ; from += PAGE) {
