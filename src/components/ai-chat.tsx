@@ -95,7 +95,7 @@ export function AiChat() {
 
       {error && (
         <div className="mt-2 rounded-md border border-error-soft bg-error-soft/40 px-4 py-2 text-sm text-error-deep">
-          AI 助手目前無法使用(可能尚未設定 DEEPSEEK_API_KEY)。
+          AI 助手暫時無法回應。可能是使用過於頻繁(請稍後再試,或登入以提高額度),或尚未設定 DEEPSEEK_API_KEY。
         </div>
       )}
 
