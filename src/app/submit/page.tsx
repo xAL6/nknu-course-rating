@@ -13,17 +13,16 @@ type SP = { [k: string]: string | string[] | undefined };
 export default async function SubmitPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const code = Array.isArray(sp.course) ? sp.course[0] : sp.course;
-  const n = Array.isArray(sp.n) ? sp.n[0] : sp.n;
   if (!code) notFound();
 
-  const course = await getCourse(decodeURIComponent(code), n);
+  const course = await getCourse(decodeURIComponent(code));
   if (!course) notFound();
 
   const user = await getCurrentUser();
 
   return (
     <div className="mx-auto max-w-xl px-6 py-10">
-      <Button render={<Link href={`/course/${course.courseCode}`} />} nativeButton={false} variant="ghost" size="sm" className="mb-4 gap-1">
+      <Button render={<Link href={`/course/${encodeURIComponent(course.courseKey)}`} />} nativeButton={false} variant="ghost" size="sm" className="mb-4 gap-1">
         <ArrowLeft className="size-4" /> 返回課程
       </Button>
 
@@ -43,7 +42,7 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
         </div>
       ) : (
         <div className="mt-8">
-          <ReviewForm courseCode={course.courseCode} offerings={course.offerings} />
+          <ReviewForm courseKey={course.courseKey} offerings={course.offerings} />
         </div>
       )}
     </div>

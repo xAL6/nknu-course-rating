@@ -19,10 +19,10 @@ import { submitReview } from "@/lib/actions";
 import type { Offering } from "@/lib/data/types";
 
 export function ReviewForm({
-  courseCode,
+  courseKey,
   offerings,
 }: {
-  courseCode: string;
+  courseKey: string;
   offerings: Offering[];
 }) {
   const router = useRouter();
@@ -52,7 +52,7 @@ export function ReviewForm({
 
   return (
     <form action={action} className="space-y-6">
-      <input type="hidden" name="courseCode" value={courseCode} />
+      <input type="hidden" name="courseKey" value={courseKey} />
       <input type="hidden" name="syllabusNo" value={syllabusNo} />
       {RATING_DIMENSIONS.map((d) => (
         <input key={d.key} type="hidden" name={d.key} value={scores[d.key]} />

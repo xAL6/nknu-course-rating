@@ -27,7 +27,7 @@ async function requireUser() {
 }
 
 const reviewSchema = z.object({
-  courseCode: z.string().min(1),
+  courseKey: z.string().min(1),
   syllabusNo: z.string().min(1),
   semesterId: z.string().optional(),
   sweetness: z.coerce.number().int().min(1).max(5),
@@ -75,12 +75,12 @@ export async function submitReview(formData: FormData) {
     .eq("user_id", user.id);
   await supabase.from("profiles").update({ reputation: (count ?? 0) * 10 }).eq("user_id", user.id);
 
-  revalidatePath(`/course/${input.courseCode}`);
+  revalidatePath(`/course/${input.courseKey}`);
   revalidatePath("/leaderboard");
   return { ok: true };
 }
 
-export async function toggleBookmark(courseId: string, courseCode: string) {
+export async function toggleBookmark(courseId: string, courseKey: string) {
   const { supabase, user } = await requireUser();
   const { data: existing } = await supabase
     .from("bookmarks")
@@ -94,13 +94,13 @@ export async function toggleBookmark(courseId: string, courseCode: string) {
   } else {
     await supabase.from("bookmarks").insert({ user_id: user.id, course_id: courseId });
   }
-  revalidatePath(`/course/${courseCode}`);
+  revalidatePath(`/course/${courseKey}`);
   return { bookmarked: !existing };
 }
 
 const voteKind = z.enum(["like", "useful", "not_useful"]);
 
-export async function voteReview(reviewId: string, kind: string, courseCode: string) {
+export async function voteReview(reviewId: string, kind: string, courseKey: string) {
   const { supabase, user } = await requireUser();
   const k = voteKind.parse(kind);
   const { data: existing } = await supabase
@@ -116,14 +116,14 @@ export async function voteReview(reviewId: string, kind: string, courseCode: str
   } else {
     await supabase.from("votes").insert({ user_id: user.id, review_id: reviewId, kind: k });
   }
-  revalidatePath(`/course/${courseCode}`);
+  revalidatePath(`/course/${courseKey}`);
   return { voted: !existing };
 }
 
-export async function addComment(reviewId: string, body: string, courseCode: string) {
+export async function addComment(reviewId: string, body: string, courseKey: string) {
   const { supabase, user } = await requireUser();
   const text = z.string().min(1).max(2000).parse(body);
   await supabase.from("comments").insert({ review_id: reviewId, user_id: user.id, body: text });
-  revalidatePath(`/course/${courseCode}`);
+  revalidatePath(`/course/${courseKey}`);
   return { ok: true };
 }

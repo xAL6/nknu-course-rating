@@ -41,7 +41,7 @@ export default async function TeacherPage({ params }: { params: Promise<{ name: 
               {teacher.courses.map((c) => (
                 <Link
                   key={c.courseCode}
-                  href={`/course/${encodeURIComponent(c.courseCode)}`}
+                  href={`/course/${encodeURIComponent(c.courseKey)}`}
                   className="elev-1 hover:elev-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-canvas px-4 py-3 transition-shadow"
                 >
                   <span className="font-mono text-xs text-mute">{c.courseCode}</span>

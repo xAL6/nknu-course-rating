@@ -14,37 +14,21 @@ import { getReviews, getRatingSummary } from "@/lib/data/reviews";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
-type SP = { [k: string]: string | string[] | undefined };
-const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-
-export async function generateMetadata({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ code: string }>;
-  searchParams: Promise<SP>;
-}) {
+export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const n = one((await searchParams).n);
-  const course = await getCourse(decodeURIComponent(code), n);
+  const course = await getCourse(decodeURIComponent(code));
   return { title: course ? `${course.name}（${course.courseCode}）` : "課程" };
 }
 
-export default async function CoursePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ code: string }>;
-  searchParams: Promise<SP>;
-}) {
+export default async function CoursePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const n = one((await searchParams).n);
-  const course = await getCourse(decodeURIComponent(code), n);
+  const courseKey = decodeURIComponent(code);
+  const course = await getCourse(courseKey);
   if (!course) notFound();
 
   const [reviews, summary] = await Promise.all([
-    getReviews(course.courseCode, course.name),
-    getRatingSummary(course.courseCode),
+    getReviews(courseKey),
+    getRatingSummary(courseKey),
   ]);
 
   const bookmarkCourseId = course.offerings[0]?.id;
@@ -91,7 +75,7 @@ export default async function CoursePage({
             <div className="mt-4">
               <BookmarkButton
                 courseId={bookmarkCourseId}
-                courseCode={course.courseCode}
+                courseKey={course.courseKey}
                 initial={bookmarked}
               />
             </div>
@@ -170,7 +154,7 @@ export default async function CoursePage({
           <section className="mt-10">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold tracking-tight">學生評價</h2>
-              <Button render={<Link href={`/submit?course=${encodeURIComponent(course.courseCode)}&n=${encodeURIComponent(course.name)}`} />} nativeButton={false} size="sm">
+              <Button render={<Link href={`/submit?course=${encodeURIComponent(course.courseKey)}`} />} nativeButton={false} size="sm">
                 撰寫評價
               </Button>
             </div>
@@ -191,7 +175,7 @@ export default async function CoursePage({
                       </div>
                       <ReviewVotes
                         reviewId={r.id}
-                        courseCode={course.courseCode}
+                        courseKey={course.courseKey}
                         likeCount={r.likeCount}
                         usefulCount={r.usefulCount}
                       />

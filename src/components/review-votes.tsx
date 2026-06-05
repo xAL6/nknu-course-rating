@@ -7,12 +7,12 @@ import { voteReview } from "@/lib/actions";
 
 export function ReviewVotes({
   reviewId,
-  courseCode,
+  courseKey,
   likeCount,
   usefulCount,
 }: {
   reviewId: string;
-  courseCode: string;
+  courseKey: string;
   likeCount: number;
   usefulCount: number;
 }) {
@@ -22,7 +22,7 @@ export function ReviewVotes({
   function vote(kind: "like" | "useful") {
     start(async () => {
       try {
-        const res = await voteReview(reviewId, kind, courseCode);
+        const res = await voteReview(reviewId, kind, courseKey);
         setCounts((c) => ({ ...c, [kind]: c[kind] + (res.voted ? 1 : -1) }));
       } catch {
         toast.error("請先以高師大信箱登入。");
