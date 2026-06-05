@@ -4,6 +4,7 @@ export type Slot = { weekday: number; period: string };
 export type Offering = {
   id?: string;
   syllabusNo: string | null;
+  courseKey: string;
   courseCode: string;
   name: string;
   nameEn: string | null;
@@ -36,8 +37,9 @@ export type RatingSummary = {
   grading: number | null;
 };
 
-/** A logical course (grouped across offerings by course code). */
+/** A logical course (grouped across offerings by course_key). */
 export type CourseGroup = {
+  courseKey: string;
   courseCode: string;
   name: string;
   nameEn: string | null;

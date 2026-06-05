@@ -8,11 +8,11 @@ import { toggleBookmark } from "@/lib/actions";
 
 export function BookmarkButton({
   courseId,
-  courseCode,
+  courseKey,
   initial = false,
 }: {
   courseId: string;
-  courseCode: string;
+  courseKey: string;
   initial?: boolean;
 }) {
   const [saved, setSaved] = useState(initial);
@@ -27,7 +27,7 @@ export function BookmarkButton({
       onClick={() =>
         start(async () => {
           try {
-            const res = await toggleBookmark(courseId, courseCode);
+            const res = await toggleBookmark(courseId, courseKey);
             setSaved(res.bookmarked);
             toast(res.bookmarked ? "已收藏" : "已取消收藏");
           } catch {

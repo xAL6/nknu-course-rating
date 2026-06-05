@@ -52,7 +52,7 @@ export default async function LeaderboardPage() {
               trending.map((t, i) => (
                 <Link
                   key={t.courseCode}
-                  href={`/course/${encodeURIComponent(t.courseCode)}`}
+                  href={`/course/${encodeURIComponent(t.courseKey)}`}
                   className="elev-1 hover:elev-2 flex items-center gap-3 rounded-md bg-canvas px-4 py-3 transition-shadow"
                 >
                   <span className="w-6 text-center font-mono text-sm text-mute">{i + 1}</span>

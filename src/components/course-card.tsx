@@ -9,7 +9,7 @@ export function CourseCard({ course }: { course: CourseGroup }) {
   const latest = course.offerings[0];
   return (
     <Link
-      href={`/course/${encodeURIComponent(course.courseCode)}?n=${encodeURIComponent(course.name)}`}
+      href={`/course/${encodeURIComponent(course.courseKey)}`}
       className="elev-2 hover:elev-3 group block rounded-lg bg-canvas p-5 transition-shadow"
     >
       <div className="flex items-start justify-between gap-3">

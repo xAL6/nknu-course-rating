@@ -20,16 +20,15 @@ export type Review = {
   userId: string;
 };
 
-/** Reviews for a logical course (course_code + name). Empty if no DB yet. */
-export async function getReviews(courseCode: string, name?: string): Promise<Review[]> {
+/** Reviews for a logical course (by course_key). Empty if no DB yet. */
+export async function getReviews(courseKey: string): Promise<Review[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
-  let query = supabase
+  const { data } = await supabase
     .from("reviews")
-    .select("*, courses!inner(course_code, name)")
-    .eq("courses.course_code", courseCode);
-  if (name) query = query.eq("courses.name", name);
-  const { data } = await query.order("created_at", { ascending: false });
+    .select("*, courses!inner(course_key)")
+    .eq("courses.course_key", courseKey)
+    .order("created_at", { ascending: false });
 
   return (data ?? []).map((r) => ({
     id: r.id,
@@ -49,13 +48,13 @@ export async function getReviews(courseCode: string, name?: string): Promise<Rev
   }));
 }
 
-export async function getRatingSummary(courseCode: string): Promise<RatingSummary | null> {
+export async function getRatingSummary(courseKey: string): Promise<RatingSummary | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("course_rating_summary")
     .select("*")
-    .eq("course_code", courseCode)
+    .eq("course_key", courseKey)
     .maybeSingle();
   if (!data) return null;
   return {

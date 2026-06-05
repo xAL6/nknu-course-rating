@@ -4,7 +4,9 @@ import { isSupabaseConfigured } from "./courses";
 
 export type Contributor = { displayName: string; reputation: number; reviewCount: number };
 export type TrendingCourse = {
+  courseKey: string;
   courseCode: string;
+  name: string;
   reviewCount: number;
   avgQuality: number | null;
 };
@@ -31,13 +33,15 @@ export async function getTrendingCourses(limit = 20): Promise<TrendingCourse[]> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("course_rating_summary")
-    .select("course_code, review_count, avg_quality")
+    .select("course_key, course_code, name, review_count, avg_quality")
     .order("review_count", { ascending: false })
     .limit(limit);
   return (data ?? [])
     .filter((s) => (s.review_count ?? 0) > 0)
     .map((s) => ({
+      courseKey: s.course_key as string,
       courseCode: s.course_code as string,
+      name: s.name as string,
       reviewCount: s.review_count as number,
       avgQuality: s.avg_quality as number | null,
     }));

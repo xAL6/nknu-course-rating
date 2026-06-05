@@ -24,12 +24,12 @@ export default async function MePage() {
   const [{ data: reviews }, { data: bookmarks }] = await Promise.all([
     supabase
       .from("reviews")
-      .select("id, short_comment, created_at, semester_id, courses(course_code, name)")
+      .select("id, short_comment, created_at, semester_id, courses(course_code, name, course_key)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("bookmarks")
-      .select("course_id, courses(course_code, name)")
+      .select("course_id, courses(course_code, name, course_key)")
       .eq("user_id", user.id),
   ]);
 
@@ -55,11 +55,11 @@ export default async function MePage() {
             <Empty text="你還沒有撰寫任何評價。" />
           ) : (
             (reviews ?? []).map((r) => {
-              const c = r.courses as unknown as { course_code: string; name: string } | null;
+              const c = r.courses as unknown as { course_code: string; name: string; course_key: string } | null;
               return (
                 <Link
                   key={r.id}
-                  href={c ? `/course/${encodeURIComponent(c.course_code)}` : "#"}
+                  href={c ? `/course/${encodeURIComponent(c.course_key)}` : "#"}
                   className="elev-1 hover:elev-2 block rounded-md bg-canvas px-4 py-3 transition-shadow"
                 >
                   <div className="flex items-center gap-2">
@@ -83,11 +83,11 @@ export default async function MePage() {
             <Empty text="尚未收藏課程。" />
           ) : (
             (bookmarks ?? []).map((b) => {
-              const c = b.courses as unknown as { course_code: string; name: string } | null;
+              const c = b.courses as unknown as { course_code: string; name: string; course_key: string } | null;
               return (
                 <Link
                   key={b.course_id}
-                  href={c ? `/course/${encodeURIComponent(c.course_code)}` : "#"}
+                  href={c ? `/course/${encodeURIComponent(c.course_key)}` : "#"}
                   className="elev-1 hover:elev-2 flex items-center gap-2 rounded-md bg-canvas px-4 py-3 transition-shadow"
                 >
                   <span className="font-mono text-xs text-mute">{c?.course_code}</span>
