@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const o = c.offerings[0];
     return {
       courseCode: c.courseCode,
+      courseKey: c.courseKey,
       name: c.name,
       teachers: c.teachers,
       credits: c.credits,

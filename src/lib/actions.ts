@@ -120,6 +120,54 @@ export async function voteReview(reviewId: string, kind: string, courseKey: stri
   return { voted: !existing };
 }
 
+const timetableCourse = z.object({
+  courseCode: z.string(),
+  syllabusNo: z.string().nullable(),
+  name: z.string(),
+  teachers: z.array(z.string()),
+  classroom: z.string().nullable(),
+  semesterId: z.string(),
+  slots: z.array(z.object({ weekday: z.number(), period: z.string() })),
+});
+
+/** Persist the user's timetable (one row per user). */
+export async function saveTimetable(courses: unknown) {
+  const { supabase, user } = await requireUser();
+  const parsed = z.array(timetableCourse).max(60).parse(courses);
+  const semesterId = parsed[0]?.semesterId ?? null;
+  const { error } = await supabase.from("timetables").upsert(
+    {
+      user_id: user.id,
+      semester_id: semesterId,
+      courses: parsed,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) throw error;
+  return { ok: true, count: parsed.length };
+}
+
+/** Load the user's saved timetable, or null if none / not signed in. */
+export async function loadTimetable() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("timetables")
+    .select("courses, semester_id, updated_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    courses: (data.courses ?? []) as unknown[],
+    semesterId: data.semester_id as string | null,
+    updatedAt: data.updated_at as string,
+  };
+}
+
 export async function addComment(reviewId: string, body: string, courseKey: string) {
   const { supabase, user, displayName } = await requireUser();
   const text = z.string().min(1).max(2000).parse(body);

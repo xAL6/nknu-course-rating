@@ -21,8 +21,11 @@ export function AddToTimetable({ course }: { course: TimetableCourse }) {
           removeFromTimetable(course);
           toast("已從課表移除");
         } else {
-          addToTimetable(course);
-          toast.success("已加入課表");
+          const res = addToTimetable(course);
+          if (res.ok) toast.success("已加入課表");
+          else if (res.reason === "semester")
+            toast.error("課表已鎖定其他學期,請先清空再加入不同學期的課。");
+          else toast("這門課已在課表中");
         }
       }}
       className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
