@@ -55,9 +55,12 @@ d("Supabase Auth RLS + rating trigger (authenticated user)", () => {
 
   it("rating trigger recomputes the summary", async ({ skip }) => {
     if (!hasCourse) return skip();
+    // course_code is no longer unique in the summary (keyed by course_key+teacher_key);
+    // sum the review_count across this code's rows.
     const { data } = await admin
-      .from("course_rating_summary").select("review_count").eq("course_code", courseCode).maybeSingle();
-    expect((data?.review_count ?? 0)).toBeGreaterThanOrEqual(1);
+      .from("course_rating_summary").select("review_count").eq("course_code", courseCode);
+    const total = (data ?? []).reduce((a, s) => a + (s.review_count ?? 0), 0);
+    expect(total).toBeGreaterThanOrEqual(1);
   });
 
   it("blocks inserting a review as another user (RLS deny)", async ({ skip }) => {
