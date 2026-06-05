@@ -51,16 +51,21 @@ export default async function LeaderboardPage() {
             ) : (
               trending.map((t, i) => (
                 <Link
-                  key={t.courseCode}
-                  href={`/course/${encodeURIComponent(t.courseKey)}`}
+                  key={`${t.courseKey}|${t.teacherKey}`}
+                  href={`/course/${encodeURIComponent(t.courseKey)}?t=${encodeURIComponent(t.teacherKey)}`}
                   className="elev-1 hover:elev-2 flex items-center gap-3 rounded-md bg-canvas px-4 py-3 transition-shadow"
                 >
                   <span className="w-6 text-center font-mono text-sm text-mute">{i + 1}</span>
-                  <span className="flex-1 font-mono text-sm">{t.courseCode}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{t.name}</div>
+                    <div className="truncate text-xs text-mute">
+                      {t.teachers.length ? t.teachers.join("、") : t.courseCode}
+                    </div>
+                  </div>
                   {t.avgQuality != null && (
-                    <span className="text-xs text-mute">品質 {t.avgQuality.toFixed(1)}</span>
+                    <span className="shrink-0 text-xs text-mute">品質 {t.avgQuality.toFixed(1)}</span>
                   )}
-                  <span className="text-xs text-mute">{t.reviewCount} 則</span>
+                  <span className="shrink-0 text-xs text-mute">{t.reviewCount} 則</span>
                 </Link>
               ))
             )}

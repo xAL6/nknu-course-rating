@@ -8,11 +8,18 @@ export type TeacherListItem = { name: string; courseCount: number };
 export async function listTeachers(q?: string): Promise<TeacherListItem[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
-  const { data } = await supabase.rpc("teacher_list", { p_q: q ?? null });
-  return (data ?? []).map((t: { name: string; course_count: number }) => ({
-    name: t.name,
-    courseCount: Number(t.course_count),
-  }));
+  // PostgREST caps RPC results at 1000 rows even with .limit(); page via .range().
+  const out: TeacherListItem[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data } = await supabase
+      .rpc("teacher_list", { p_q: q ?? null })
+      .range(from, from + PAGE - 1);
+    const batch = (data ?? []) as { name: string; course_count: number }[];
+    out.push(...batch.map((t) => ({ name: t.name, courseCount: Number(t.course_count) })));
+    if (batch.length < PAGE) break;
+  }
+  return out;
 }
 
 export type TeacherDetail = {
@@ -42,15 +49,21 @@ export async function getTeacher(name: string): Promise<TeacherDetail | null> {
     b.latestSemester.localeCompare(a.latestSemester),
   );
 
-  // Aggregate rating across this teacher's courses (from the summary table).
-  const codes = [...new Set(courses.map((c) => c.courseCode))];
+  // Aggregate rating across this teacher's (course_key, teacher_key) rows.
+  // teacher_key is the sorted co-teacher set, so a name can appear in several
+  // keys (solo + co-taught variants); match any key that includes this name.
+  const courseKeys = [...new Set(courses.map((c) => c.courseKey).filter(Boolean))];
   let summary: RatingSummary | null = null;
-  if (codes.length) {
+  if (courseKeys.length) {
     const { data: sums } = await supabase
       .from("course_rating_summary")
       .select("*")
-      .in("course_code", codes);
-    const withReviews = (sums ?? []).filter((s) => (s.review_count ?? 0) > 0);
+      .in("course_key", courseKeys);
+    const withReviews = (sums ?? []).filter(
+      (s) =>
+        (s.review_count ?? 0) > 0 &&
+        ((s.teacher_key as string | null)?.split("、").includes(name) ?? false),
+    );
     if (withReviews.length) {
       const avg = (k: string) => {
         const vals = withReviews.map((s) => s[k]).filter((v) => v != null) as number[];
