@@ -3,6 +3,7 @@ import { GraduationCap, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NavAuth } from "@/components/nav-auth";
+import { MobileNav } from "@/components/mobile-nav";
 import { SITE_NAME } from "@/lib/config";
 
 const LINKS = [
@@ -15,7 +16,8 @@ const LINKS = [
 export function SiteNav() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-hairline bg-canvas/80 backdrop-blur-md dark:bg-canvas/70">
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-3 px-4 sm:gap-4 sm:px-6">
+        <MobileNav />
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
           <GraduationCap className="size-5" />
           <span className="hidden sm:inline">{SITE_NAME}</span>
