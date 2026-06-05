@@ -125,6 +125,42 @@ d("Batch features: search, votes, comments, timetables", () => {
     expect(total).toBeGreaterThanOrEqual(1);
   });
 
+  it("deleting the last review removes the stale summary row (0015)", async ({ skip }) => {
+    if (!hasCourse) return skip();
+    // Use a throwaway course/teacher key pair that currently has no reviews so we
+    // don't disturb the shared review fixture used by other tests.
+    const { data: c2 } = await admin
+      .from("courses")
+      .select("id, course_key, teacher_key")
+      .not("course_key", "is", null)
+      .not("teacher_key", "is", null)
+      .neq("id", courseId)
+      .limit(1)
+      .maybeSingle();
+    if (!c2) return skip();
+
+    const { data: r } = await admin
+      .from("reviews")
+      .insert({
+        course_id: c2.id, user_id: userId, semester_id: "114-2",
+        sweetness: 3, coolness: 3, loading: 3, quality: 3, grading: 3, display_name: "測試甲",
+      })
+      .select("id")
+      .single();
+
+    const { data: present } = await admin
+      .from("course_rating_summary").select("review_count")
+      .eq("course_key", c2.course_key).eq("teacher_key", c2.teacher_key).maybeSingle();
+    expect(present?.review_count).toBe(1);
+
+    await admin.from("reviews").delete().eq("id", r!.id);
+
+    const { data: gone } = await admin
+      .from("course_rating_summary").select("review_count")
+      .eq("course_key", c2.course_key).eq("teacher_key", c2.teacher_key).maybeSingle();
+    expect(gone).toBeNull(); // summary row removed, not left stale at 1
+  });
+
   it("timetables: a user can save and read back their own; others cannot", async () => {
     const courses = [{ courseCode: "X1", name: "測試課", teachers: [], classroom: null, semesterId: "114-2", slots: [], syllabusNo: "s" }];
     const { error } = await userClient
