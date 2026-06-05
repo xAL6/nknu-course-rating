@@ -5,6 +5,7 @@ export type Offering = {
   id?: string;
   syllabusNo: string | null;
   courseKey: string;
+  teacherKey: string;
   courseCode: string;
   name: string;
   nameEn: string | null;

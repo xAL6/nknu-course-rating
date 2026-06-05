@@ -13,10 +13,16 @@ type SP = { [k: string]: string | string[] | undefined };
 export default async function SubmitPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const code = Array.isArray(sp.course) ? sp.course[0] : sp.course;
+  const teacherKey = Array.isArray(sp.t) ? sp.t[0] : sp.t;
   if (!code) notFound();
 
   const course = await getCourse(decodeURIComponent(code));
   if (!course) notFound();
+
+  // Scope the review to the chosen teacher's offerings (the rateable unit).
+  const offerings = teacherKey
+    ? course.offerings.filter((o) => o.teacherKey === teacherKey)
+    : course.offerings;
 
   const user = await getCurrentUser();
 
@@ -42,7 +48,7 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
         </div>
       ) : (
         <div className="mt-8">
-          <ReviewForm courseKey={course.courseKey} offerings={course.offerings} />
+          <ReviewForm courseKey={course.courseKey} offerings={offerings.length ? offerings : course.offerings} />
         </div>
       )}
     </div>
