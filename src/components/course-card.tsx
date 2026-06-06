@@ -4,24 +4,42 @@ import { Badge } from "@/components/ui/badge";
 import { RatingSummaryBars } from "@/components/rating-summary";
 import { AddToTimetable } from "@/components/add-to-timetable";
 import { formatSlots } from "@/lib/schedule";
+import { RATING_DIMENSIONS } from "@/lib/config";
 import type { CourseGroup } from "@/lib/data/types";
+
+const ACCENTS = [
+  "var(--rate-sweet)",
+  "var(--rate-grading)",
+  "var(--rate-cool)",
+  "var(--rate-quality)",
+  "var(--rate-load)",
+];
+function accentFor(code: string) {
+  let h = 0;
+  for (const ch of code) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return ACCENTS[h % ACCENTS.length];
+}
 
 export function CourseCard({ course }: { course: CourseGroup }) {
   const latest = course.offerings[0];
   const yearLong = course.offerings.some((o) => o.category === "Y");
   const canSchedule = (latest?.slots?.length ?? 0) > 0;
+  const accent = accentFor(course.courseCode + course.name);
+  const hasRating = !!course.summary && course.summary.reviewCount > 0;
 
   return (
-    <div className="elev-2 hover:elev-3 group relative rounded-lg bg-canvas p-5 transition-shadow">
-      {/* Stretched link: the whole card navigates to the course page… */}
+    <div className="elev-2 hover:elev-3 card-pop group relative overflow-hidden rounded-xl bg-canvas">
+      {/* derived accent stripe */}
+      <span className="absolute inset-y-0 left-0 w-1" style={{ backgroundColor: accent }} aria-hidden />
+
+      {/* stretched link — whole card navigates */}
       <Link
         href={`/course/${encodeURIComponent(course.courseKey)}`}
-        className="absolute inset-0 z-0 rounded-lg"
+        className="absolute inset-0 z-0"
         aria-label={course.name}
       />
 
-      {/* …content is non-interactive so clicks fall through to the link. */}
-      <div className="pointer-events-none relative">
+      <div className="pointer-events-none relative p-5 pl-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="font-mono text-xs text-mute">{course.courseCode}</div>
@@ -33,7 +51,7 @@ export function CourseCard({ course }: { course: CourseGroup }) {
           <div className="flex shrink-0 flex-col items-end gap-1">
             {course.credits != null && <Badge variant="secondary">{course.credits} 學分</Badge>}
             {yearLong && (
-              <Badge variant="outline" className="text-xs" title="學年課，需上下學期連修">
+              <Badge variant="outline" className="text-xs" title="學年課,需上下學期連修">
                 學年
               </Badge>
             )}
@@ -52,7 +70,25 @@ export function CourseCard({ course }: { course: CourseGroup }) {
         </div>
 
         <div className="mt-4 border-t border-hairline pt-3">
-          <RatingSummaryBars summary={course.summary} compact />
+          {hasRating ? (
+            <RatingSummaryBars summary={course.summary} compact />
+          ) : (
+            // Colorful empty state — also teaches the 5 rating dimensions.
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                {RATING_DIMENSIONS.map((d) => (
+                  <span key={d.key} className="flex items-center gap-0.5 text-[11px] text-mute">
+                    <span
+                      className="size-2 rounded-full opacity-60"
+                      style={{ backgroundColor: d.color }}
+                    />
+                    {d.label.charAt(0)}
+                  </span>
+                ))}
+              </div>
+              <span className="ml-auto text-[11px] text-mute">尚無評價</span>
+            </div>
+          )}
         </div>
 
         {latest?.enrollCap != null && (
@@ -63,9 +99,8 @@ export function CourseCard({ course }: { course: CourseGroup }) {
         )}
       </div>
 
-      {/* Add-to-timetable sits above the stretched link (own stacking + clicks). */}
       {canSchedule && latest && (
-        <div className="relative z-10 mt-3 flex justify-end">
+        <div className="relative z-10 flex justify-end px-5 pb-4">
           <AddToTimetable
             course={{
               courseCode: course.courseCode,
