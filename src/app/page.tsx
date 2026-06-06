@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Search, Star, CalendarRange, Sparkles, ArrowRight, Flame, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Reveal } from "@/components/reveal";
 import { SITE_TAGLINE } from "@/lib/config";
 import { getHomeStats, getTrendingCourses } from "@/lib/data/community";
 
@@ -88,27 +89,15 @@ export default async function Home() {
 
       {/* ── Feature trio (each owns a rating color) ── */}
       <section className="mx-auto grid max-w-[1400px] gap-4 px-6 py-20 md:grid-cols-3">
-        <FeatureCard
-          delay={0}
-          color="var(--rate-sweet)"
-          icon={<Star className="size-5" />}
-          title="多維度評價"
-          desc="甜度、涼度、負擔、品質、給分五大面向,量化每門課的真實樣貌。"
-        />
-        <FeatureCard
-          delay={80}
-          color="var(--rate-cool)"
-          icon={<CalendarRange className="size-5" />}
-          title="排課模擬"
-          desc="把心儀的課加入課表,自動偵測衝堂,一眼看出一週的安排。"
-        />
-        <FeatureCard
-          delay={160}
-          color="var(--rate-quality)"
-          icon={<Sparkles className="size-5" />}
-          title="AI 課程助手"
-          desc="用一句話描述你想要的課,AI 從同學評價中為你推薦最合適的選擇。"
-        />
+        {[
+          { color: "var(--rate-sweet)", icon: <Star className="size-5" />, title: "多維度評價", desc: "甜度、涼度、負擔、品質、給分五大面向,量化每門課的真實樣貌。" },
+          { color: "var(--rate-cool)", icon: <CalendarRange className="size-5" />, title: "排課模擬", desc: "把心儀的課加入課表,自動偵測衝堂,一眼看出一週的安排。" },
+          { color: "var(--rate-quality)", icon: <Sparkles className="size-5" />, title: "AI 課程助手", desc: "用一句話描述你想要的課,AI 從同學評價中為你推薦最合適的選擇。" },
+        ].map((f, i) => (
+          <Reveal key={f.title} delay={i * 0.08}>
+            <FeatureCard color={f.color} icon={f.icon} title={f.title} desc={f.desc} />
+          </Reveal>
+        ))}
       </section>
 
       {/* ── Trending / cold-start ── */}
@@ -118,7 +107,8 @@ export default async function Home() {
           <h2 className="text-lg font-semibold tracking-tight">熱門課程</h2>
         </div>
 
-        {trending.length > 0 ? (
+        <Reveal>
+          {trending.length > 0 ? (
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {trending.map((t, i) => (
               <Link
@@ -165,7 +155,8 @@ export default async function Home() {
               </Button>
             </div>
           </div>
-        )}
+          )}
+        </Reveal>
       </section>
     </>
   );
@@ -197,19 +188,14 @@ function FeatureCard({
   title,
   desc,
   color,
-  delay,
 }: {
   icon: React.ReactNode;
   title: string;
   desc: string;
   color: string;
-  delay: number;
 }) {
   return (
-    <div
-      className="elev-2 card-pop animate-rise relative overflow-hidden rounded-2xl bg-canvas p-6"
-      style={{ animationDelay: `${delay}ms` }}
-    >
+    <div className="elev-2 card-pop relative h-full overflow-hidden rounded-2xl bg-canvas p-6">
       <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} aria-hidden />
       <div
         className="flex size-11 items-center justify-center rounded-xl"

@@ -62,8 +62,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
         </div>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {result.items.map((c) => (
-            <CourseCard key={`${c.courseCode} ${c.name}`} course={c} />
+          {result.items.map((c, i) => (
+            <CourseCard key={`${c.courseCode} ${c.name}`} course={c} index={i} />
           ))}
         </div>
       )}
