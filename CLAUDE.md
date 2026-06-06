@@ -54,16 +54,27 @@ The `/courses` filter cascades 學制 → 系所 → 班級 (facets via the `fac
 ## Key identity model (important)
 
 NKNU course **codes are NOT stable**: the same `course_code` is reused for different
-courses across years, and a course may change code. So:
+courses across years, AND a course's `course_code` usually **changes every year**
+(e.g. 吳明倫's 演算法 was MA231→MA232→MA233→MA234→MA238 across 110–114). So we use a
+**two-level identity** (migrations 0016→0019):
 
 - **`syllabus_no`** — the only globally-unique key (per offering). Used for dedup + upsert.
-- **`course_key`** = `department_code + ':' + normalized(name)` — the **stable logical
-  course** identity (set by a DB trigger; normalizes full/half-width + strips spaces).
-  Routes use it: `/course/[course_key]`. Merges a course's multi-year history; separates
-  different courses that reused a code.
-- **`teacher_key`** = sorted co-teacher set joined by `、` (DB trigger). The **rateable
-  unit is (course_key, teacher_key)** — each teacher's version of a course is rated
-  separately; a co-taught course is one team. `course_rating_summary` is keyed by both.
+- **`course_key`** = `department_code + ':' + normalized(name) + ':' + teacher_key` — the
+  **logical course** (DB trigger; `nrm_name` normalizes full/half-width + strips spaces).
+  Stable across years even when the code changes, while keeping different teachers apart
+  (EN201 周雋 ≠ EN202 張淑君). Routes/ratings/history use it: `/course/[course_key]` merges
+  a course's multi-year 開課紀錄; `course_rating_summary` is keyed by it.
+- **Browse list is per-開課代號**: `groupCourses(offerings, "code")` makes the
+  single-semester `/courses` list show one card per `course_code` (mirrors the school's
+  開課 list, so same-semester sections like EN303/EN304 each appear) — each card links to
+  its logical `course_key`. Search/detail use the default `"logical"` grouping.
+- **`teacher_key`** = sorted co-teacher set joined by `、` (DB trigger), also embedded in
+  `course_key`. The **rateable unit is the logical course** (one teacher's version; a
+  co-taught course is one team).
+- **Membership arrays** (migration 0017): one offering is listed under many contexts, so
+  `class_codes`/`class_names`/`department_codes`/`degree_level_codes` are `text[]` and the
+  `/courses` filters use array-containment (a course shared across 甲/乙班 or 合班 shows
+  under each). Scalar `class_code`/`department_code`/`degree_level_code` remain the primary.
 - Teachers are stored as a denormalized `teacher_names text[]` on each course (handles
   co-teaching; avoids fragile M:N joins). Teacher list via the `teacher_list` RPC.
 
