@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, MapPin, Users, MessageSquare } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, MapPin, Users, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RatingSummaryBars } from "@/components/rating-summary";
@@ -11,7 +11,7 @@ import { AddToTimetable } from "@/components/add-to-timetable";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { formatSlots } from "@/lib/schedule";
 import { SEMESTER_TERMS, RATING_DIMENSIONS } from "@/lib/config";
-import { getCourse } from "@/lib/data/courses";
+import { getCourse, getCourseSibling } from "@/lib/data/courses";
 import { getReviews, getTeacherSummaries } from "@/lib/data/reviews";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -43,9 +43,10 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
   const course = await getCourse(courseKey);
   if (!course) notFound();
 
-  const [reviews, teacherSummaries] = await Promise.all([
+  const [reviews, teacherSummaries, sibling] = await Promise.all([
     getReviews(courseKey),
     getTeacherSummaries(courseKey),
+    getCourseSibling(course),
   ]);
   const summaryByTk = new Map(teacherSummaries.map((s) => [s.teacherKey, s.summary]));
 
@@ -111,6 +112,16 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
       </div>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">{course.name}</h1>
       {course.nameEn && <p className="mt-1 text-body">{course.nameEn}</p>}
+      {sibling && (
+        <Link
+          href={`/course/${encodeURIComponent(sibling.courseKey)}`}
+          className="mt-2 inline-flex items-center gap-1 text-sm text-link hover:underline"
+        >
+          {sibling.relation === "prev" && <ArrowLeft className="size-3.5" />}
+          {sibling.relation === "next" ? "下學期" : "上學期"}：{sibling.name}
+          {sibling.relation === "next" && <ArrowRight className="size-3.5" />}
+        </Link>
+      )}
       {bookmarkCourseId && (
         <div className="mt-4">
           <BookmarkButton courseId={bookmarkCourseId} courseKey={course.courseKey} initial={bookmarked} />

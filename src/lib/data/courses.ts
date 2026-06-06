@@ -304,6 +304,61 @@ async function searchCoursesRanked(
   };
 }
 
+export type CourseSibling = { courseKey: string; name: string; relation: "next" | "prev" };
+
+/**
+ * For a year-long course's (一)/(二) half, find the other half's course page.
+ * Pairing is conservative to avoid the false-positives that bit course_code:
+ *   1) same department + the swapped name (safe, ~85% of cases);
+ *   2) else a globally UNIQUE swapped-name match (recovers cross-listed halves
+ *      like 室內樂…(一)/(二) under sibling dept codes, while skipping ambiguous
+ *      names such as 微積分(二) that exist in many departments).
+ * Only year-long courses (category 'Y') are linked.
+ */
+export async function getCourseSibling(course: CourseGroup): Promise<CourseSibling | null> {
+  if (!isSupabaseConfigured()) return null;
+  if (!course.offerings.some((o) => o.category === "Y")) return null;
+
+  const name = course.name;
+  const mOne = name.match(/^(.*?)[(（]一[)）]\s*$/);
+  const mTwo = name.match(/^(.*?)[(（]二[)）]\s*$/);
+  let base: string;
+  let relation: "next" | "prev";
+  if (mOne) { base = mOne[1]; relation = "next"; }
+  else if (mTwo) { base = mTwo[1]; relation = "prev"; }
+  else return null;
+
+  const target = relation === "next" ? "二" : "一";
+  const siblingName = `${base}(${target})`;
+  const variants = [siblingName, `${base}（${target}）`]; // half- and full-width parens
+
+  const supabase = await createClient();
+  const deptCodes = [...new Set(course.offerings.map((o) => o.departmentCode).filter(Boolean))];
+
+  // Tier 1: same department.
+  if (deptCodes.length) {
+    const { data } = await supabase
+      .from("courses")
+      .select("course_key, name")
+      .in("name", variants)
+      .in("department_code", deptCodes)
+      .limit(5);
+    const keys = [...new Set((data ?? []).map((r) => r.course_key as string))];
+    if (keys.length === 1) return { courseKey: keys[0], name: (data![0].name as string), relation };
+  }
+
+  // Tier 2: globally unique swapped-name match.
+  const { data } = await supabase
+    .from("courses")
+    .select("course_key, name")
+    .in("name", variants)
+    .limit(10);
+  const keys = [...new Set((data ?? []).map((r) => r.course_key as string))];
+  if (keys.length === 1) return { courseKey: keys[0], name: (data![0].name as string), relation };
+
+  return null;
+}
+
 /** Resolve a logical course by its stable course_key (see migration 0008). */
 export async function getCourse(courseKey: string): Promise<CourseGroup | null> {
   if (!isSupabaseConfigured()) {
