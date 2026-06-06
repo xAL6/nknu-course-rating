@@ -13,6 +13,26 @@ export type TrendingCourse = {
   avgQuality: number | null;
 };
 
+export type HomeStats = { courses: number; departments: number; semesters: number; reviews: number };
+
+/** Cheap head-counts for the homepage stat band. */
+export async function getHomeStats(): Promise<HomeStats> {
+  if (!isSupabaseConfigured()) return { courses: 0, departments: 0, semesters: 0, reviews: 0 };
+  const supabase = await createClient();
+  const [c, d, s, r] = await Promise.all([
+    supabase.from("courses").select("id", { count: "exact", head: true }),
+    supabase.from("departments").select("code", { count: "exact", head: true }),
+    supabase.from("semesters").select("id", { count: "exact", head: true }),
+    supabase.from("reviews").select("id", { count: "exact", head: true }),
+  ]);
+  return {
+    courses: c.count ?? 0,
+    departments: d.count ?? 0,
+    semesters: s.count ?? 0,
+    reviews: r.count ?? 0,
+  };
+}
+
 export async function getTopContributors(limit = 50): Promise<Contributor[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
