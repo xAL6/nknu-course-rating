@@ -53,3 +53,6 @@ tmp*.json
 supabase/.supabase-ca.pem
 
 crawl-*.log
+
+# temp crawl/scratch logs
+scripts/_*
