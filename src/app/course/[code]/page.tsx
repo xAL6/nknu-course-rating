@@ -8,6 +8,7 @@ import { ReviewVotes } from "@/components/review-votes";
 import { ReviewComments } from "@/components/review-comments";
 import { ReviewSummaryAI } from "@/components/review-summary-ai";
 import { AddToTimetable } from "@/components/add-to-timetable";
+import { BackButton } from "@/components/back-button";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { formatSlots } from "@/lib/schedule";
 import { SEMESTER_TERMS, RATING_DIMENSIONS } from "@/lib/config";
@@ -91,9 +92,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
 
   return (
     <div className="mx-auto max-w-[1000px] px-6 py-10">
-      <Button render={<Link href="/courses" />} nativeButton={false} variant="ghost" size="sm" className="mb-4 gap-1">
-        <ArrowLeft className="size-4" /> 返回課程列表
-      </Button>
+      <BackButton fallback="/courses" label="返回課程列表" />
 
       {/* Header */}
       <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-mute">
