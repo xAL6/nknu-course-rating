@@ -56,3 +56,8 @@ crawl-*.log
 
 # temp crawl/scratch logs
 scripts/_*
+
+# scratch screenshots
+/*.jpeg
+/*.png
+.playwright-mcp/
