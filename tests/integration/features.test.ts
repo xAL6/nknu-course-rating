@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { userClientFor } from "../helpers";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -23,8 +24,6 @@ d("Batch features: search, votes, comments, timetables", () => {
 
   beforeAll(async () => {
     admin = createClient(url!, service!, { auth: { persistSession: false } });
-    userClient = createClient(url!, anon!, { auth: { persistSession: false } });
-    otherClient = createClient(url!, anon!, { auth: { persistSession: false } });
 
     const { data: u } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
     userId = u.user!.id;
@@ -47,8 +46,9 @@ d("Batch features: search, votes, comments, timetables", () => {
       hasCourse = true;
     }
 
-    await userClient.auth.signInWithPassword({ email, password });
-    await otherClient.auth.signInWithPassword({ email: otherEmail, password });
+    // Act as signed-in NKNU users via JWTs (email/password provider is off).
+    userClient = userClientFor(url!, anon!, userId, email);
+    otherClient = userClientFor(url!, anon!, otherId, otherEmail);
 
     if (hasCourse) {
       const { data: r } = await admin
@@ -95,8 +95,7 @@ d("Batch features: search, votes, comments, timetables", () => {
     const gmail = `vitest_evil_${Date.now()}@gmail.com`;
     const { data: g } = await admin.auth.admin.createUser({ email: gmail, password, email_confirm: true });
     const gid = g.user!.id;
-    const gClient = createClient(url!, anon!, { auth: { persistSession: false } });
-    await gClient.auth.signInWithPassword({ email: gmail, password });
+    const gClient = userClientFor(url!, anon!, gid, gmail);
     try {
       // Even as their OWN row (auth.uid() = user_id), the non-NKNU domain is rejected.
       const { error } = await gClient.from("reviews").insert({
