@@ -188,6 +188,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                       className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-mute"
                     >
                       <span className="font-mono">{semLabel(o.semesterId)}</span>
+                      <span className="font-mono text-body">{o.courseCode}</span>
                       {o.courseType && <span>{o.courseType}</span>}
                       {o.category === "Y" && <span className="text-link">學年</span>}
                       {o.className && <span>{o.className}</span>}
