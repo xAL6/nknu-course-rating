@@ -98,6 +98,11 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
       <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-mute">
         <span>{course.courseCode}</span>
         {course.credits != null && <span>· {course.credits} 學分</span>}
+        {course.offerings.some((o) => o.category === "Y") && (
+          <Badge variant="outline" title="學年課，需上下學期連修">
+            學年課
+          </Badge>
+        )}
         {course.departments.map((d) => (
           <Badge key={d} variant="secondary">
             {d}
@@ -174,6 +179,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                     >
                       <span className="font-mono">{semLabel(o.semesterId)}</span>
                       {o.courseType && <span>{o.courseType}</span>}
+                      {o.category === "Y" && <span className="text-link">學年</span>}
                       {o.className && <span>{o.className}</span>}
                       <span>{o.dayNight === "N" ? "進修" : "日間"}</span>
                       <span className="text-body">{formatSlots(o.slots)}</span>

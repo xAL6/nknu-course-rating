@@ -7,6 +7,7 @@ import type { CourseGroup } from "@/lib/data/types";
 
 export function CourseCard({ course }: { course: CourseGroup }) {
   const latest = course.offerings[0];
+  const yearLong = course.offerings.some((o) => o.category === "Y");
   return (
     <Link
       href={`/course/${encodeURIComponent(course.courseKey)}`}
@@ -20,11 +21,16 @@ export function CourseCard({ course }: { course: CourseGroup }) {
           </h3>
           {course.nameEn && <p className="truncate text-xs text-mute">{course.nameEn}</p>}
         </div>
-        {course.credits != null && (
-          <Badge variant="secondary" className="shrink-0">
-            {course.credits} 學分
-          </Badge>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {course.credits != null && (
+            <Badge variant="secondary">{course.credits} 學分</Badge>
+          )}
+          {yearLong && (
+            <Badge variant="outline" className="text-xs" title="學年課，需上下學期連修">
+              學年
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-body">
