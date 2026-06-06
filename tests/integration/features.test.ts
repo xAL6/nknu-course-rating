@@ -90,6 +90,26 @@ d("Batch features: search, votes, comments, timetables", () => {
     for (let i = 1; i < rows.length; i++) expect(rows[i - 1].rank).toBeGreaterThanOrEqual(rows[i].rank);
   });
 
+  it("RLS domain guard: a non-NKNU signed-in user cannot write (0018)", async ({ skip }) => {
+    if (!hasCourse) return skip();
+    const gmail = `vitest_evil_${Date.now()}@gmail.com`;
+    const { data: g } = await admin.auth.admin.createUser({ email: gmail, password, email_confirm: true });
+    const gid = g.user!.id;
+    const gClient = createClient(url!, anon!, { auth: { persistSession: false } });
+    await gClient.auth.signInWithPassword({ email: gmail, password });
+    try {
+      // Even as their OWN row (auth.uid() = user_id), the non-NKNU domain is rejected.
+      const { error } = await gClient.from("reviews").insert({
+        course_id: courseId, user_id: gid, semester_id: "114-2",
+        sweetness: 3, coolness: 3, loading: 3, quality: 3, grading: 3, display_name: "壞人",
+      });
+      expect(error).not.toBeNull(); // blocked at the DB layer, not just the app
+    } finally {
+      await admin.from("reviews").delete().eq("user_id", gid);
+      await admin.auth.admin.deleteUser(gid);
+    }
+  });
+
   it("vote-count trigger maintains reviews.like_count", async ({ skip }) => {
     if (!hasCourse) return skip();
     const { error: vErr } = await userClient
