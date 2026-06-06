@@ -146,7 +146,7 @@ export function CoursesFilter({
           value={current.dept ?? "all"}
           onValueChange={(v) => update({ dept: v && v !== "all" ? v : undefined, classCode: undefined })}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-auto min-w-[220px] max-w-[340px]">
             <SelectValue>
               {(v) =>
                 !v || v === "all"
@@ -170,7 +170,7 @@ export function CoursesFilter({
           onValueChange={(v) => update({ classCode: v && v !== "all" ? v : undefined })}
           disabled={!current.dept}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-auto min-w-[200px] max-w-[320px]">
             <SelectValue>
               {(v) =>
                 !v || v === "all"
