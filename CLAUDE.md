@@ -82,53 +82,78 @@ courses across years, AND a course's `course_code` usually **changes every year*
 
 Reverse-engineers `sso.nknu.edu.tw/Stu/scheduleDepartment.aspx` (ASP.NET WebForms).
 - Cascade: 學制(`uDeformType`) → 系所(`uDepartment`) → 班級(`uClass`); search via `uSearch`.
-- **Must union ALL 班級**: `全年級選課用` only holds all-grade 選修; each 班級's 必修+選修
-  are locked under that class. (國文 全年級=5 vs union-of-9-classes=105.) `pickClasses`
-  returns every class; dedup by `syllabus_no`.
+- **Must union ALL 班級 + aggregate memberships**: `全年級選課用` only holds all-grade
+  選修; each 班級's 必修+選修 are locked under that class. One offering (`syllabus_no`) is
+  listed under MANY (學制/系所/班級) contexts (合班 必修, 跨班 選修, 學院開課). The crawler
+  AGGREGATES every membership per `syllabus_no` into arrays (`class_codes`/`class_names`/
+  `department_codes`/`degree_level_codes`) instead of dedup-dropping the others — otherwise
+  filtering by the hidden 班級/系所/學制 shows too few courses (英語乙班, 應數組, 文學院).
+- **Resilient**: every network step (`selectDeform`/`selectDepartment`/`search`) retries 5×
+  with backoff (NKNU drops connections — ECONNRESET). Crawls terms 1/2/暑 by default.
 - Campus: derived from the room-code prefix (digit → 和平; letter BT/CM/LI/MA/PH/SF/SR/TC →
   燕巢) via `crawl:rooms`, since `scheduleRoom.aspx` building lists are per-campus.
-- Upsert sets the columns; DB triggers compute `course_key`/`teacher_key`. ~23k courses
-  for 110-1…114-2.
+- Upsert sets columns + membership arrays; DB triggers compute `course_key`/`teacher_key`.
+  ~23k offerings for 110…114 (all terms). `crawl:ci` = same crawler, env from secrets.
 
 ## Auth (Supabase Auth, Google only)
 
 - `/auth` → custom Google-only sign-in (`signInWithOAuth`), `/auth/callback` exchanges the
   code, **enforces the `@mail.nknu.edu.tw` domain** (`NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`),
   bootstraps a privacy-first profile (stores only the auth uid, never the email).
-- Writes go through Server Actions (`src/lib/actions.ts`) guarded by `requireUser()`;
-  RLS (`auth.uid() = user_id`) is the backstop. Public reads via the anon client.
-- **SETUP NEEDED**: enable the Google provider in the Supabase dashboard with a Google
-  Cloud OAuth client (redirect `https://<ref>.supabase.co/auth/v1/callback`). Until then
-  login is inert. See `docs/SETUP.md`.
+- **Google provider is enabled** (Supabase project `your-project-ref`); Email/password
+  provider is disabled (Google-only). Site URL + redirect allow-list configured.
+- Writes go through Server Actions (`src/lib/actions.ts`) guarded by `requireUser()`.
+  **RLS is the real backstop** — the anon key is public and PostgREST is a public HTTP API,
+  so write policies require `auth.uid() = user_id AND is_nknu()` (migration 0018): `is_nknu()`
+  reads the verified JWT email, so even a non-NKNU Google account that signs in directly
+  (bypassing the app) cannot write. service_role bypasses RLS (crawler/admin only).
+- ⚠️ Remaining manual step: **Publish the Google OAuth consent screen** (else only test
+  users can log in).
 
 ## Database
 
 - Migrations in `supabase/migrations/` (numbered; idempotent; tracked in `_migrations`).
   `npm run migrate` applies new ones. Migrations run via direct pg (`scripts/migrate.ts`).
-- RLS: public `SELECT` on reference + UGC tables; writes only by the owner.
-- `course_rating_summary` is maintained by triggers on `reviews`.
+- RLS: public `SELECT` on reference + UGC tables; writes only by the owner **and** an NKNU
+  mailbox (`is_nknu()`, migration 0018).
+- `course_rating_summary` (keyed by the logical `course_key`) is maintained by triggers on
+  `reviews`; the trigger DELETEs the summary row when the last review is removed (0015).
+- Vote counts (`reviews.like_count/useful_count`) maintained by a trigger on `votes` (0010).
 
 ## Layout / data flow
 
 - `src/lib/data/` — server-only data layer (`courses.ts`, `reviews.ts`, `teachers.ts`,
-  `community.ts`, `ai-search.ts`). `listCourses` pages past PostgREST's 1000-row cap.
+  `community.ts`, `ai-search.ts`). `listCourses` pages past PostgREST's 1000-row cap;
+  a free-text query searches **cross-semester** (trigram-ranked `search_courses` RPC, 0012),
+  browse filters use array-containment on the membership arrays.
 - `src/lib/supabase/` — `client` (browser anon), `server` (RSC anon w/ cookies),
   `admin` (service role; server/crawler only).
-- Course detail (`/course/[code]`) renders **per-teacher cards**; submit is scoped by `?t=`.
-- Timetable (`/timetable`) is localStorage-only (`src/lib/timetable-store.ts`), with
-  conflict detection.
+- Course detail (`/course/[course_key]`) = one logical course (dept+name+teacher), merging
+  its history across years/codes; each offering row shows that term's actual 課號. Comments
+  thread per review (`ReviewComments`); optional AI TL;DR (`ReviewSummaryAI`).
+- Timetable (`/timetable`, localStorage `timetable-store.ts`) — conflict detection, locked
+  to one semester, shareable via URL token, and savable to the account (`timetables` table,
+  0013). Course text search is semester-scoped for the add-panel.
 
 ## AI advisor
 
 `/ai` (AI Elements UI) → `/api/ai/chat` streams DeepSeek with a `searchCourses` tool
 (grounded RAG over the DB). Gated on `DEEPSEEK_API_KEY`; shows a "not enabled" state without it.
+Rate-limited (anon 8/h, signed-in 40/h, in-memory `rate-limit.ts`); the model cites courses
+as clickable `[名](/course/<course_key>)` links.
 
-## Known TODO / rough edges
+## Status / remaining rough edges
 
-- Enable Google OAuth provider (above) — blocks the whole review side.
-- Vote counts (`reviews.like_count/useful_count`) aren't yet maintained by a trigger.
-- Comment UI not built (the `addComment` action exists).
-- `teacher_list` RPC may cap at 1000 rows; search still works.
-- Search is per-semester, substring (no full-text ranking, no cross-year search).
-- Nightly re-crawl isn't scheduled; run `npm run crawl` when a new semester opens.
-- Mobile layout not audited.
+Done in recent batches: per-(course,teacher) ratings; comments UI; cross-semester trigram
+search; timetable semester-lock/share/account-save; AI rate-limit + clickable links + review
+TL;DR; sitemap/robots/OG + nightly crawl Action; mobile nav; vote-count trigger;
+teacher_list pagination; M:N membership arrays; two-level course identity; RLS domain guard.
+
+Remaining:
+- **Publish the Google OAuth consent screen** (manual; else only test users can log in).
+- Set `DEEPSEEK_API_KEY` to turn on the AI advisor + review TL;DR.
+- Historical years 110–113 were re-crawled with memberships; if a new semester opens, run
+  `npm run crawl -- --year <n>` (or the nightly Action).
+- In-memory rate limit isn't shared across instances (swap for Upstash if needed).
+- If a course changes its 開課代號 across years its history still merges (keyed by
+  dept+name+teacher); a *different* teacher each year would read as separate courses.
