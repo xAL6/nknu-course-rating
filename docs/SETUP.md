@@ -1,84 +1,68 @@
-# Setup Runbook — NKNU 選課評價
+# Setup / Operations Runbook — NKNU 選課評價
 
-The app code (Phases 0–1c) is complete. These steps provision the live backend so
-auth, reviews, and the real course database activate. Until then the UI runs on a
-bundled real-data fixture (`src/data/fixture-courses.json`, 5 departments).
+The app is **live and fully provisioned**. This is the operational reference; the
+"from scratch" section at the end is only for re-creating the backend elsewhere.
 
-## 1. Link the project to Vercel + provision Supabase (Marketplace)
+## Current state (provisioned)
 
-Run these in the chat with a leading `!` so the output is captured:
+- **Supabase** project `zapmupchtogixnbdpmmd` (region us-east-1). Migrations applied
+  through `0019`. ~23k offerings crawled for 110–114 (all terms), with membership arrays.
+- **Auth**: Google provider **enabled**; Email/password **disabled** (Google-only). Site
+  URL + redirect allow-list set. Domain gate `mail.nknu.edu.tw` enforced in the callback
+  **and** at the DB (`is_nknu()` RLS, migration 0018).
+- **Vercel**: deployed to `https://nknu-new-rating-xal6s-projects.vercel.app` (CLI; the
+  GitHub auto-deploy hook is unreliable — deploy with `vercel deploy --prod --yes`).
 
-```
-! vercel login
-! vercel link            # create/select a project
-! vercel integration add supabase
-! vercel env pull .env.local --yes
-```
-
-`vercel integration add supabase` provisions Supabase and injects env vars. After
-`env pull`, confirm `.env.local` contains a Supabase URL + anon key + service-role
-key. The app expects these names:
+`.env.local` env var names the app expects:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
+NEXT_PUBLIC_SUPABASE_URL= / NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=            # server/crawler only — bypasses RLS
+SUPABASE_JWT_SECRET=                  # used by tests to mint user sessions
+POSTGRES_URL=                         # direct pg, used by npm run migrate
+NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=mail.nknu.edu.tw
+NEXT_PUBLIC_SITE_URL=https://nknu-new-rating-xal6s-projects.vercel.app
+DEEPSEEK_API_KEY=                     # optional — turns on the AI advisor + review TL;DR
 ```
 
-If the integration named them differently (e.g. `SUPABASE_URL`), copy the values to
-the `NEXT_PUBLIC_*` names above (tell me and I'll do it).
+## Remaining manual steps
 
-## 2. Apply the database schema
+1. **Publish the Google OAuth consent screen** (Google Cloud → OAuth consent screen →
+   Publish app). Until then only added test users can log in. Google client lives in the
+   project owner's Google Cloud account; redirect URI is
+   `https://zapmupchtogixnbdpmmd.supabase.co/auth/v1/callback`.
+2. **Set `DEEPSEEK_API_KEY`** (Vercel env + `.env.local`) to enable `/ai` and review TL;DR.
 
-Either paste `supabase/migrations/0001_init.sql` into the Supabase dashboard
-**SQL Editor** and run it, or with the Postgres connection string:
+## Routine operations
 
-```
-! psql "$POSTGRES_URL" -f supabase/migrations/0001_init.sql
-```
-
-## 3. Enable Google sign-in (NKNU-domain gated)
-
-1. Google Cloud Console → create OAuth 2.0 Client (Web). Authorized redirect URI:
-   `https://<your-supabase-ref>.supabase.co/auth/v1/callback`
-2. Supabase dashboard → Authentication → Providers → **Google**: paste the Client
-   ID + secret, enable.
-3. Supabase → Authentication → URL Configuration → add `http://localhost:3000` and
-   your production URL to redirect allow-list.
-4. **Confirm the NKNU student mail domain** and set it in `.env.local`:
-   `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS=gm.nknu.edu.tw,...`
-   (The OAuth callback at `src/app/auth/callback/route.ts` rejects other domains
-   and stores only the provider `sub` — never the email.)
-
-## 4. Crawl real course data into the DB
-
-```
-! npm run crawl -- --year 115 --sem 1        # one semester, all departments
-! npm run crawl -- --year 114 --sem 1 --year 114 --sem 2   # add more as desired
+```bash
+npm run migrate                         # apply new supabase/migrations/*.sql
+npm run crawl -- --year 115             # crawl a newly-opened year (terms 1/2/暑, resilient)
+npm run crawl -- --from 110 --to 114    # full re-crawl (idempotent upsert by syllabus_no)
+npm run crawl:rooms                     # rebuild 校區 map + backfill courses.campus
+npm test                                # vitest (unit + live Supabase integration)
+vercel deploy --prod --yes              # deploy
 ```
 
-(Add `--dump out.json` to preview without writing.) Re-running is idempotent
-(upsert by `syllabus_no`). Once the DB has data, swap the data layer off the
-fixture by implementing the `TODO(supabase)` queries in `src/lib/data/courses.ts`
-(or tell me and I'll wire them).
+The nightly GitHub Action (`.github/workflows/crawl.yml`) re-crawls automatically; it needs
+repo secrets `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 
-## 5. Verify
+## Verify
 
-```
-! npm run dev
-```
+- `/courses`, `/course/[course_key]` show DB data; search finds a course cross-semester.
+- Sign in with an NKNU Google account → `/submit?course=…` shows the rating form.
+- A non-NKNU account is rejected at `/auth?error=domain`, and blocked at the DB even if it
+  bypasses the app (RLS `is_nknu()`).
+- Submit a review → appears on the course page; summary updates (trigger).
 
-- `/courses`, `/course/[code]` show DB data
-- Sign in with an NKNU Google account → `/submit?course=…` shows the rating form
-- A non-NKNU account is rejected at `/auth?error=domain`
-- Submit a review → it appears on the course page and the summary updates (trigger)
+## From scratch (re-provision elsewhere)
 
-## 6. Deploy
-
-```
-! vercel deploy --prod
-```
-
-Set the same env vars on the Vercel project (the integration handles Supabase
-ones; add `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`, `NEXT_PUBLIC_SITE_URL`, and later
-`DEEPSEEK_API_KEY`).
+1. `vercel link` → `vercel integration add supabase` → `vercel env pull .env.local --yes`
+   (copy values to the `NEXT_PUBLIC_*` names above if the integration names them differently).
+2. `npm run migrate` to apply all migrations (`0001`…`0019`).
+3. Google Cloud → OAuth 2.0 Web client (redirect `https://<ref>.supabase.co/auth/v1/callback`);
+   enable Google + disable Email in Supabase Auth → Providers; set Site URL + redirect
+   allow-list (`<site>/auth/callback`, `http://localhost:3000/auth/callback`). These auth
+   settings can be set via the Supabase **Management API** (`PATCH /v1/projects/<ref>/config/auth`)
+   with an `sbp_` access token.
+4. `npm run crawl -- --from 110 --to 114` to populate courses, then `vercel deploy --prod`.
