@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { userClientFor } from "../helpers";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -20,7 +21,6 @@ d("Supabase Auth RLS + rating trigger (authenticated user)", () => {
 
   beforeAll(async () => {
     admin = createClient(url!, service!, { auth: { persistSession: false } });
-    userClient = createClient(url!, anon!, { auth: { persistSession: false } });
 
     const { data: created } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
     userId = created.user!.id;
@@ -32,7 +32,8 @@ d("Supabase Auth RLS + rating trigger (authenticated user)", () => {
       courseCode = course.course_code;
       hasCourse = true;
     }
-    await userClient.auth.signInWithPassword({ email, password });
+    // Act as the signed-in NKNU user via a JWT (email/password provider is off).
+    userClient = userClientFor(url!, anon!, userId, email);
   });
 
   afterAll(async () => {
