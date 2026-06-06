@@ -17,7 +17,14 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
   const page = Number(str(sp.page) ?? "1") || 1;
   const current = Object.fromEntries(KEYS.map((k) => [k, str(sp[k])]));
 
-  const result = await listCourses({ ...current, page });
+  // A text search is cross-semester: drop the semester filter when there's a
+  // query, so searching finds a course no matter which term it was offered in
+  // (the in-page search box otherwise carries the selected semester).
+  const result = await listCourses({
+    ...current,
+    semester: current.q ? undefined : current.semester,
+    page,
+  });
 
   const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));
   const mkHref = (p: number) => {
