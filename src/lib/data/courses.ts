@@ -199,9 +199,10 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
       .range(from, from + PAGE - 1);
     if (dayNight) query = query.eq("day_night", dayNight);
     if (campus) query = query.eq("campus", campus);
-    if (level) query = query.eq("degree_level_code", level);
-    if (dept) query = query.eq("department_code", dept);
-    if (classCode) query = query.eq("class_code", classCode);
+    // 學制/系所/班級 are M:N memberships (一門課可掛多個班級/系所/學制).
+    if (level) query = query.contains("degree_level_codes", [level]);
+    if (dept) query = query.contains("department_codes", [dept]);
+    if (classCode) query = query.contains("class_codes", [classCode]);
     const { data } = await query;
     const batch = (data ?? []).map((r) => rowToOffering(r as unknown as CourseRow));
     offerings.push(...batch);
@@ -269,8 +270,8 @@ async function searchCoursesRanked(
         .range(from, from + PAGE - 1);
       if (p.dayNight) query = query.eq("day_night", p.dayNight);
       if (p.campus) query = query.eq("campus", p.campus);
-      if (p.level) query = query.eq("degree_level_code", p.level);
-      if (p.dept) query = query.eq("department_code", p.dept);
+      if (p.level) query = query.contains("degree_level_codes", [p.level]);
+      if (p.dept) query = query.contains("department_codes", [p.dept]);
       const { data } = await query;
       const batch = (data ?? []).map((r) => rowToOffering(r as unknown as CourseRow));
       offerings.push(...batch);

@@ -10,6 +10,11 @@ type Enriched = CourseRecord & {
   degreeLevelCode?: string;
   dayNight?: string;
   classCode?: string | null;
+  departmentCodes?: string[];
+  departmentNames?: string[];
+  classCodes?: string[];
+  classNames?: string[];
+  degreeLevelCodes?: string[];
 };
 
 function admin(): SupabaseClient {
@@ -45,9 +50,14 @@ export async function upsertCourses(records: Enriched[]) {
   }
   await db.from("semesters").upsert([...semesters.values()], { onConflict: "id" });
 
-  // departments
+  // departments — include every membership code (合班 / 學院開課 cross-listings).
   const depts = new Map<string, { code: string; name: string }>();
-  for (const r of records) depts.set(r.departmentCode, { code: r.departmentCode, name: r.departmentName });
+  for (const r of records) {
+    depts.set(r.departmentCode, { code: r.departmentCode, name: r.departmentName });
+    const codes = r.departmentCodes ?? [];
+    const names = r.departmentNames ?? [];
+    codes.forEach((code, i) => depts.set(code, { code, name: names[i] ?? code }));
+  }
   await db.from("departments").upsert([...depts.values()], { onConflict: "code" });
 
   // courses — teachers stored denormalized as an array (co-teaching safe).
@@ -66,6 +76,10 @@ export async function upsertCourses(records: Enriched[]) {
     degree_level: r.degreeLevel ?? null,
     degree_level_code: r.degreeLevelCode ?? null,
     day_night: r.dayNight ?? null,
+    department_codes: r.departmentCodes ?? (r.departmentCode ? [r.departmentCode] : []),
+    class_codes: r.classCodes ?? (r.classCode ? [r.classCode] : []),
+    class_names: r.classNames ?? (r.className ? [r.className] : []),
+    degree_level_codes: r.degreeLevelCodes ?? (r.degreeLevelCode ? [r.degreeLevelCode] : []),
     teacher_names: r.teachers ?? [],
     class_time_raw: r.classTimeRaw,
     slots: r.slots,
