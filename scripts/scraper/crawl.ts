@@ -32,12 +32,34 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Enriched = CourseRecord & {
   semesterId: string;
+  // Primary (first-seen) context — used for display/back-compat scalar columns.
   departmentCode: string;
   departmentName: string;
   degreeLevel: string;
   degreeLevelCode: string;
   dayNight: string;
   classCode: string | null;
+  // Full membership sets — one offering can be listed under many contexts.
+  departmentCodes: string[];
+  departmentNames: string[];
+  classCodes: string[];
+  classNames: string[];
+  degreeLevelCodes: string[];
+};
+
+// Accumulates every (學制/系所/班級) context a single syllabus_no appears under.
+type Member = {
+  rec: CourseRecord;
+  semesterId: string;
+  primary: {
+    deptCode: string; deptName: string;
+    level: string; levelName: string; dn: string;
+    classCode: string | null; className: string | null;
+  };
+  depts: Map<string, string>; // code -> name
+  classes: Map<string, string>; // code -> name
+  levels: Set<string>;
+  dns: Set<string>;
 };
 
 async function main() {
@@ -67,8 +89,7 @@ async function main() {
       `deforms=${deforms.map((d) => d.value).join(",")} dn=${dns.join(",")}`,
   );
 
-  const all: Enriched[] = [];
-  const seen = new Set<string>();
+  const agg = new Map<string, Member>();
 
   for (const year of years) {
     for (const sem of semesters) {
@@ -104,6 +125,7 @@ async function main() {
               });
               await sleep(delay);
 
+              const levelName = deform.label.replace(/^[A-Za-z0-9/]+[:：]\s*/, "");
               let deptCount = 0;
               for (const klass of pickClasses(classes)) {
                 const records = await client.search($, {
@@ -115,25 +137,38 @@ async function main() {
                   classCode: klass?.value,
                 });
                 for (const r of records) {
-                  const key = `${semesterId}:${r.syllabusNo ?? r.courseCode + r.teachers.join()}`;
-                  if (seen.has(key)) continue;
-                  seen.add(key);
-                  all.push({
-                    ...r,
-                    // 系級/班級 from the searched uClass. Each 班級 holds that
-                    // grade's 必修 AND 選修; 全年級選課用 holds the all-grade 選修.
-                    // We union every class, so all course types are captured.
-                    className: klass?.label ?? r.className,
-                    classCode: klass?.value ?? null,
-                    semesterId,
-                    departmentCode: dept.value,
-                    departmentName: dept.label,
-                    degreeLevel: deform.label.replace(/^[A-Za-z0-9/]+[:：]\s*/, ""),
-                    degreeLevelCode: deform.value,
-                    dayNight: dn,
-                  });
-                  deptCount++;
+                  // Aggregate by (semester, syllabus_no): the SAME offering is
+                  // listed under many 班級/系所/學制 (合班 必修, 全年級/跨班 選修,
+                  // 學院開課). Union every context instead of dropping duplicates.
+                  const sylKey = r.syllabusNo ?? `${r.courseCode}|${r.name}|${r.teachers.join()}`;
+                  const key = `${semesterId}::${sylKey}`;
+                  let m = agg.get(key);
+                  if (!m) {
+                    m = {
+                      rec: r,
+                      semesterId,
+                      primary: {
+                        deptCode: dept.value,
+                        deptName: dept.label,
+                        level: deform.value,
+                        levelName,
+                        dn,
+                        classCode: klass?.value ?? null,
+                        className: klass?.label ?? r.className ?? null,
+                      },
+                      depts: new Map(),
+                      classes: new Map(),
+                      levels: new Set(),
+                      dns: new Set(),
+                    };
+                    agg.set(key, m);
+                  }
+                  m.depts.set(dept.value, dept.label);
+                  if (klass?.value) m.classes.set(klass.value, klass.label ?? klass.value);
+                  m.levels.add(deform.value);
+                  m.dns.add(dn);
                 }
+                deptCount += records.length;
                 await sleep(delay);
               }
               if (deptCount > 0)
@@ -147,6 +182,23 @@ async function main() {
       }
     }
   }
+
+  const all: Enriched[] = [...agg.values()].map((m) => ({
+    ...m.rec,
+    semesterId: m.semesterId,
+    departmentCode: m.primary.deptCode,
+    departmentName: m.primary.deptName,
+    degreeLevel: m.primary.levelName,
+    degreeLevelCode: m.primary.level,
+    dayNight: m.primary.dn,
+    classCode: m.primary.classCode,
+    className: m.primary.className,
+    departmentCodes: [...m.depts.keys()],
+    departmentNames: [...m.depts.values()],
+    classCodes: [...m.classes.keys()],
+    classNames: [...m.classes.values()],
+    degreeLevelCodes: [...m.levels],
+  }));
 
   console.error(`[crawl] total unique offerings: ${all.length}`);
 
