@@ -30,6 +30,26 @@ function parseArgs(argv: string[]): Args {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Retry a network step with exponential backoff. NKNU drops connections
+ * intermittently (ECONNRESET); without this a whole 系所 can be skipped, leaving
+ * gaps. Brute-force every step until it succeeds (or we exhaust attempts).
+ */
+async function retry<T>(fn: () => Promise<T>, label: string, tries = 5): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const wait = 1500 * (i + 1);
+      console.error(`[crawl] retry ${i + 1}/${tries} ${label}: ${(e as Error).message} (wait ${wait}ms)`);
+      await sleep(wait);
+    }
+  }
+  throw lastErr;
+}
+
 type Enriched = CourseRecord & {
   semesterId: string;
   // Primary (first-seen) context — used for display/back-compat scalar columns.
@@ -79,7 +99,7 @@ async function main() {
       .map((y) => y.value)
       .filter((y) => Number(y) >= from && Number(y) <= to);
   }
-  const semesters = args.sem ? [String(args.sem)] : ["1", "2"];
+  const semesters = args.sem ? [String(args.sem)] : ["1", "2", "3"]; // include 暑期
   let deforms = client.deforms($0);
   if (args.deform) deforms = deforms.filter((d) => d.value === String(args.deform));
   const dns = args.dn ? [String(args.dn)] : ["D", "N"];
@@ -99,7 +119,10 @@ async function main() {
           let departments: Option[];
           let $base;
           try {
-            const r = await client.selectDeform($0, { year, semester: sem, deform: deform.value, dn });
+            const r = await retry(
+              () => client.selectDeform($0, { year, semester: sem, deform: deform.value, dn }),
+              `deform ${deform.value}/${dn}`,
+            );
             departments = r.departments;
             $base = r.$;
             await sleep(delay);
@@ -116,26 +139,34 @@ async function main() {
 
           for (const dept of departments) {
             try {
-              const { $, classes } = await client.selectDepartment($base, {
-                year,
-                semester: sem,
-                deform: deform.value,
-                dn,
-                departmentCode: dept.value,
-              });
+              const { $, classes } = await retry(
+                () =>
+                  client.selectDepartment($base, {
+                    year,
+                    semester: sem,
+                    deform: deform.value,
+                    dn,
+                    departmentCode: dept.value,
+                  }),
+                `dept ${dept.label}`,
+              );
               await sleep(delay);
 
               const levelName = deform.label.replace(/^[A-Za-z0-9/]+[:：]\s*/, "");
               let deptCount = 0;
               for (const klass of pickClasses(classes)) {
-                const records = await client.search($, {
-                  year,
-                  semester: sem,
-                  deform: deform.value,
-                  dn,
-                  departmentCode: dept.value,
-                  classCode: klass?.value,
-                });
+                const records = await retry(
+                  () =>
+                    client.search($, {
+                      year,
+                      semester: sem,
+                      deform: deform.value,
+                      dn,
+                      departmentCode: dept.value,
+                      classCode: klass?.value,
+                    }),
+                  `search ${dept.label}/${klass?.label ?? "-"}`,
+                );
                 for (const r of records) {
                   // Aggregate by (semester, syllabus_no): the SAME offering is
                   // listed under many 班級/系所/學制 (合班 必修, 全年級/跨班 選修,
