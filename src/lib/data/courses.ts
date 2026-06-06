@@ -76,10 +76,24 @@ export const SELECT = "*, departments(name)";
  * different courses across years, so grouping by code alone produces false
  * 開課紀錄. Same code + same name across semesters/classes = one course.
  */
-export function groupCourses(offerings: Offering[]): CourseGroup[] {
+/**
+ * Group offerings into courses. Two modes:
+ *  - "logical" (default): by course_key (dept+name+teacher) — merges a course's
+ *    history across years/codes. Used for the detail page and search results.
+ *  - "code": by 開課代號 (course_code+name) — one card per code, mirroring the
+ *    school's per-semester 開課 list. Each card still carries its logical
+ *    course_key for the link. Used for single-semester browsing.
+ */
+export function groupCourses(
+  offerings: Offering[],
+  mode: "logical" | "code" = "logical",
+): CourseGroup[] {
   const map = new Map<string, Offering[]>();
   for (const o of offerings) {
-    const k = o.courseKey || `${o.courseCode} ${o.name}`;
+    const k =
+      mode === "code"
+        ? `${o.courseCode} ${o.name}`
+        : o.courseKey || `${o.courseCode} ${o.name}`;
     const arr = map.get(k) ?? [];
     arr.push(o);
     map.set(k, arr);
@@ -220,7 +234,7 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
     );
   }
 
-  const groups = groupCourses(offerings).sort((a, b) => a.courseCode.localeCompare(b.courseCode));
+  const groups = groupCourses(offerings, "code").sort((a, b) => a.courseCode.localeCompare(b.courseCode));
   const start = (page - 1) * pageSize;
   return {
     items: groups.slice(start, start + pageSize),
@@ -393,7 +407,7 @@ function listFromFixture(params: CourseListParams): CourseListResult {
       (o) => o.name.toLowerCase().includes(n) || o.courseCode.toLowerCase().includes(n),
     );
   }
-  const groups = groupCourses(offerings).sort((a, b) => a.courseCode.localeCompare(b.courseCode));
+  const groups = groupCourses(offerings, "code").sort((a, b) => a.courseCode.localeCompare(b.courseCode));
   const start = (page - 1) * pageSize;
   return {
     items: groups.slice(start, start + pageSize),
