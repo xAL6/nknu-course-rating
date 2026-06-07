@@ -161,34 +161,46 @@ async function genEdCourses(): Promise<CourseGroup[]> {
   const supabase = await createClient();
   const semester = await latestSemester();
   if (!semester) return [];
-  const { data: deptRows } = await supabase.rpc("facet_departments", {
-    p_sem: semester,
-    p_level: null,
-    p_dn: null,
-    p_campus: null,
-  });
-  const codes = ((deptRows ?? []) as { code: string; name: string }[])
-    .filter((d) => d.name.includes("通識"))
-    .map((d) => d.code);
-  const groups = new Map<string, CourseGroup>();
+  // Authoritative 通識 dept codes from the departments table (covers BOTH 和平 +
+  // 燕巢, even when a course carries the dept only in its membership array).
+  const { data: deptRows } = await supabase.from("departments").select("code, name").ilike("name", "%通識%");
+  const codes = ((deptRows ?? []) as { code: string; name: string }[]).map((d) => d.code);
+  const lists: CourseGroup[][] = [];
   for (const code of codes) {
     const r = await listCourses({ semester, dept: code, pageSize: 300 });
-    for (const g of r.items) if (g.name !== "通識教育") groups.set(g.courseKey + "|" + g.courseCode, g);
+    lists.push(r.items.filter((g) => g.name !== "通識教育"));
   }
-  return [...groups.values()];
+  // Round-robin interleave so neither campus dominates the head (a later slice
+  // must not drop one whole campus).
+  const out: CourseGroup[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; lists.some((l) => i < l.length); i++) {
+    for (const l of lists) {
+      const g = l[i];
+      if (!g) continue;
+      const k = g.courseKey + "|" + g.courseCode;
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push(g);
+      }
+    }
+  }
+  return out;
 }
 
 export async function retrieveCourses(
   query: string,
   department?: string,
-  opts?: { tags?: string[] },
+  opts?: { tags?: string[]; campus?: string },
 ): Promise<AiCourseResult[]> {
   const tags = opts?.tags?.filter(Boolean) ?? [];
+  const campus = opts?.campus;
   // 通識／博雅 category asks → list real gen-ed electives, not a「通識」name search.
   const isGenEd = /通識|博雅|通才/.test(query) && !department;
-  const items = isGenEd
+  let items = isGenEd
     ? await genEdCourses()
-    : (await listCourses({ q: query, dept: department, pageSize: tags.length ? 36 : 12 })).items;
+    : (await listCourses({ q: query, dept: department, campus, pageSize: tags.length ? 36 : 12 })).items;
+  if (campus && isGenEd) items = items.filter((g) => g.offerings[0]?.campus === campus);
   const sums = await fetchSummaries(items.map((c) => c.courseKey).filter(Boolean));
 
   const courses = items.map((c) => toAiResult(c, sums.get(c.courseKey)));
