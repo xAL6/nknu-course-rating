@@ -151,7 +151,7 @@
   --ambient-grain-opacity: 0.015;
   --glass-bg: color-mix(in oklch, white 44%, transparent);
   --glass-bg-strong: color-mix(in oklch, white 60%, transparent);
-  --glass-bg-soft: color-mix(in oklch, white 48%, transparent);
+  --glass-bg-soft: color-mix(in oklch, white 78%, transparent);
   --glass-border: color-mix(in oklch, white 70%, transparent);
   --glass-highlight: color-mix(in oklch, white 95%, transparent);
   --glass-sheen: color-mix(in oklch, white 65%, transparent);
@@ -217,7 +217,7 @@
   --ambient-grain-opacity: 0.045;
   --glass-bg: color-mix(in oklch, #15151c 34%, transparent);
   --glass-bg-strong: color-mix(in oklch, #121218 52%, transparent);
-  --glass-bg-soft: color-mix(in oklch, #16161e 38%, transparent);
+  --glass-bg-soft: color-mix(in oklch, #16161e 74%, transparent);
   --glass-border: color-mix(in oklch, white 22%, transparent);
   --glass-highlight: color-mix(in oklch, white 32%, transparent);
   --glass-sheen: color-mix(in oklch, white 16%, transparent);
@@ -236,6 +236,11 @@
   }
   html {
     @apply font-sans;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
   h1,
   h2,
@@ -429,14 +434,11 @@
     backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.9);
     -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.9);
   }
+  /* List tier — "fake glass": translucent + sheen + border, NO backdrop-blur.
+     Used on high-count grids/rows (course cards ×24, trending, ticker) so scroll
+     stays buttery; the gold ambient still shows through the translucency. */
   .glass-soft {
-    background: linear-gradient(160deg, var(--glass-sheen), transparent 50%), var(--glass-bg-soft);
-  }
-  @media (min-width: 641px) {
-    .glass-soft {
-      backdrop-filter: blur(var(--glass-blur-soft)) saturate(1.5);
-      -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(1.5);
-    }
+    background: linear-gradient(160deg, var(--glass-sheen), transparent 52%), var(--glass-bg-soft);
   }
   .glass-interactive {
     transition:
