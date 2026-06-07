@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RATING_DIMENSIONS, SEMESTER_TERMS } from "@/lib/config";
+import { RATING_DIMENSIONS, SEMESTER_TERMS, REVIEW_TAG_GROUPS, MAX_REVIEW_TAGS } from "@/lib/config";
 import { submitReview } from "@/lib/actions";
 import type { Offering } from "@/lib/data/types";
 
@@ -31,6 +31,16 @@ export function ReviewForm({
     Object.fromEntries(RATING_DIMENSIONS.map((d) => [d.key, 3])),
   );
   const [syllabusNo, setSyllabusNo] = useState(offerings[0]?.syllabusNo ?? "");
+  const [tags, setTags] = useState<string[]>([]);
+
+  const toggleTag = (tag: string) =>
+    setTags((prev) =>
+      prev.includes(tag)
+        ? prev.filter((t) => t !== tag)
+        : prev.length >= MAX_REVIEW_TAGS
+          ? prev
+          : [...prev, tag],
+    );
 
   const semLabel = (id: string) => {
     const [y, t] = id.split("-");
@@ -56,6 +66,9 @@ export function ReviewForm({
       <input type="hidden" name="syllabusNo" value={syllabusNo} />
       {RATING_DIMENSIONS.map((d) => (
         <input key={d.key} type="hidden" name={d.key} value={scores[d.key]} />
+      ))}
+      {tags.map((t) => (
+        <input key={t} type="hidden" name="tags" value={t} />
       ))}
 
       <div>
@@ -97,6 +110,42 @@ export function ReviewForm({
             />
           </div>
         ))}
+      </div>
+
+      <div>
+        <div className="flex items-baseline justify-between">
+          <Label className="text-sm">課程標籤（選填）</Label>
+          <span className="text-xs text-mute">
+            {tags.length}/{MAX_REVIEW_TAGS}
+          </span>
+        </div>
+        <div className="mt-2 space-y-3">
+          {REVIEW_TAG_GROUPS.map((g) => (
+            <div key={g.label} className="flex flex-wrap items-center gap-2">
+              <span className="w-20 shrink-0 text-xs text-mute">{g.label}</span>
+              {g.tags.map((t) => {
+                const active = tags.includes(t);
+                const disabled = !active && tags.length >= MAX_REVIEW_TAGS;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleTag(t)}
+                    disabled={disabled}
+                    aria-pressed={active}
+                    className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-hairline text-body hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div>
