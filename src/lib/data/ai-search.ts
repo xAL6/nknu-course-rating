@@ -602,13 +602,13 @@ const PERIOD_BUCKETS: Record<string, string[]> = {
 };
 
 export async function coursesByTimeForAI(args: {
-  weekday: number;
+  weekday?: number;
   timeOfDay?: "morning" | "afternoon" | "evening";
   department?: string;
   prefer?: "sweet" | "cool" | "takeaway";
   limit?: number;
 }): Promise<
-  | { kind: "timeList"; weekday: number; timeOfDay: string | null; count: number; courses: AiCourseResult[] }
+  | { kind: "timeList"; weekday: number | null; timeOfDay: string | null; count: number; courses: AiCourseResult[] }
   | { error: string; message: string }
 > {
   const supabase = await createClient();
@@ -626,9 +626,10 @@ export async function coursesByTimeForAI(args: {
 
   const r = await listCourses({ semester, dept: deptCode, pageSize: 4000 });
   const bucket = args.timeOfDay ? PERIOD_BUCKETS[args.timeOfDay] : null;
+  const wd = args.weekday;
   const matched = r.items.filter((c) =>
     (c.offerings[0]?.slots ?? []).some(
-      (s) => Number(s.weekday) === args.weekday && (!bucket || bucket.includes(String(s.period))),
+      (s) => (wd == null || Number(s.weekday) === wd) && (!bucket || bucket.includes(String(s.period))),
     ),
   );
   const sums = await fetchSummaries(matched.map((c) => c.courseKey).filter(Boolean));
@@ -637,5 +638,5 @@ export async function coursesByTimeForAI(args: {
     .map((c) => toAiResult(c, sums.get(c.courseKey)))
     .sort((a, b) => ((b.rating?.[dim] as number | null) ?? 0) - ((a.rating?.[dim] as number | null) ?? 0))
     .slice(0, 16);
-  return { kind: "timeList", weekday: args.weekday, timeOfDay: args.timeOfDay ?? null, count: courses.length, courses };
+  return { kind: "timeList", weekday: wd ?? null, timeOfDay: args.timeOfDay ?? null, count: courses.length, courses };
 }
