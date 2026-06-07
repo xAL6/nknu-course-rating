@@ -246,12 +246,23 @@ function Grid({
                             key={c.courseCode + c.syllabusNo}
                             href={`/course/${encodeURIComponent(c.courseKey || c.courseCode)}`}
                             className="block flex-1 rounded-md px-1.5 py-1 text-left leading-tight text-white shadow-sm transition-transform duration-150 hover:scale-[1.04]"
-                            style={{ backgroundColor: conflict ? "var(--error)" : colorFor(c.courseCode) }}
+                            style={{
+                              backgroundColor: colorFor(c.courseCode),
+                              // Conflict marks only THIS period (not the whole course): keep the
+                              // course colour for identity, add a red ring so you see exactly
+                              // which time slot clashes.
+                              ...(conflict
+                                ? { boxShadow: "0 0 0 2px var(--error), 0 0 0 4px color-mix(in oklch, var(--error) 30%, transparent)" }
+                                : {}),
+                            }}
                             title={`${c.name}${c.classroom ? ` · ${c.classroom}` : ""}${
                               campusFromRoom(c.campus ?? c.classroom) ? `（${campusFromRoom(c.campus ?? c.classroom)}）` : ""
-                            }`}
+                            }${conflict ? "　⚠ 此節衝堂" : ""}`}
                           >
-                            <span className="line-clamp-2 text-xs font-semibold">{c.name}</span>
+                            <span className="line-clamp-2 text-xs font-semibold">
+                              {conflict && <span style={{ color: "var(--error)" }}>⚠ </span>}
+                              {c.name}
+                            </span>
                             {c.classroom && (
                               <span className="mt-0.5 block truncate text-[11px] text-white/85">{c.classroom}</span>
                             )}
