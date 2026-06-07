@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-display), var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -140,17 +140,19 @@
   --rate-grading: #0070f3;
 
   /* ambient backdrop + glass (light) */
-  --ambient-base: #f6f7f9;
-  --ambient-blob-opacity: 0.16;
+  --ambient-base: #eef0f6;
+  --ambient-blob-opacity: 0.3;
   --ambient-grain-opacity: 0.02;
-  --glass-bg: color-mix(in oklch, white 64%, transparent);
-  --glass-bg-strong: color-mix(in oklch, white 78%, transparent);
-  --glass-bg-soft: color-mix(in oklch, white 72%, transparent);
-  --glass-border: color-mix(in oklch, #0a0a0a 9%, transparent);
-  --glass-highlight: color-mix(in oklch, white 70%, transparent);
-  --glass-shadow: 0 10px 30px -16px rgb(0 0 0 / 0.22);
-  --glass-blur: 14px;
-  --glass-blur-strong: 22px;
+  --glass-bg: color-mix(in oklch, white 52%, transparent);
+  --glass-bg-strong: color-mix(in oklch, white 68%, transparent);
+  --glass-bg-soft: color-mix(in oklch, white 56%, transparent);
+  --glass-border: color-mix(in oklch, #0a0a0a 8%, transparent);
+  --glass-highlight: color-mix(in oklch, white 92%, transparent);
+  --glass-sheen: color-mix(in oklch, white 55%, transparent);
+  --glass-shadow: 0 18px 44px -22px rgb(0 0 0 / 0.2);
+  --glass-blur: 18px;
+  --glass-blur-strong: 28px;
+  --glass-blur-soft: 12px;
 }
 
 .dark {
@@ -198,17 +200,19 @@
   --link-deep: #0070f3;
 
   /* ambient backdrop + glass (dark — the default base) */
-  --ambient-base: #07070a;
-  --ambient-blob-opacity: 0.3;
-  --ambient-grain-opacity: 0.045;
-  --glass-bg: color-mix(in oklch, #1a1a20 55%, transparent);
-  --glass-bg-strong: color-mix(in oklch, #16161b 70%, transparent);
-  --glass-bg-soft: color-mix(in oklch, #18181e 64%, transparent);
-  --glass-border: color-mix(in oklch, white 12%, transparent);
-  --glass-highlight: color-mix(in oklch, white 14%, transparent);
-  --glass-shadow: 0 10px 34px -14px rgb(0 0 0 / 0.55);
-  --glass-blur: 14px;
-  --glass-blur-strong: 22px;
+  --ambient-base: #06060a;
+  --ambient-blob-opacity: 0.46;
+  --ambient-grain-opacity: 0.05;
+  --glass-bg: color-mix(in oklch, #1c1c26 44%, transparent);
+  --glass-bg-strong: color-mix(in oklch, #17171f 58%, transparent);
+  --glass-bg-soft: color-mix(in oklch, #1b1b25 50%, transparent);
+  --glass-border: color-mix(in oklch, white 20%, transparent);
+  --glass-highlight: color-mix(in oklch, white 28%, transparent);
+  --glass-sheen: color-mix(in oklch, white 13%, transparent);
+  --glass-shadow: 0 18px 52px -20px rgb(0 0 0 / 0.66);
+  --glass-blur: 20px;
+  --glass-blur-strong: 32px;
+  --glass-blur-soft: 14px;
 }
 
 @layer base {
@@ -220,6 +224,11 @@
   }
   html {
     @apply font-sans;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
   }
   ::selection {
     background: #171717;
@@ -341,15 +350,30 @@
   .ambient::before {
     content: "";
     position: absolute;
-    inset: -25%;
+    inset: -30%;
     background:
-      radial-gradient(38% 38% at 18% 22%, color-mix(in oklch, var(--rate-grading) 70%, transparent) 0%, transparent 70%),
-      radial-gradient(36% 36% at 82% 16%, color-mix(in oklch, var(--rate-cool) 60%, transparent) 0%, transparent 70%),
-      radial-gradient(42% 42% at 80% 74%, color-mix(in oklch, var(--rate-sweet) 55%, transparent) 0%, transparent 72%),
-      radial-gradient(40% 40% at 20% 82%, color-mix(in oklch, var(--rate-quality) 60%, transparent) 0%, transparent 72%),
-      radial-gradient(46% 46% at 52% 48%, color-mix(in oklch, var(--rate-load) 38%, transparent) 0%, transparent 75%);
-    filter: blur(70px) saturate(1.05);
+      radial-gradient(38% 38% at 18% 22%, color-mix(in oklch, var(--rate-grading) 75%, transparent) 0%, transparent 70%),
+      radial-gradient(36% 36% at 82% 16%, color-mix(in oklch, var(--rate-cool) 65%, transparent) 0%, transparent 70%),
+      radial-gradient(42% 42% at 80% 74%, color-mix(in oklch, var(--rate-sweet) 60%, transparent) 0%, transparent 72%),
+      radial-gradient(40% 40% at 20% 82%, color-mix(in oklch, var(--rate-quality) 65%, transparent) 0%, transparent 72%),
+      radial-gradient(46% 46% at 52% 48%, color-mix(in oklch, var(--rate-load) 42%, transparent) 0%, transparent 75%);
+    filter: blur(64px) saturate(1.2);
     opacity: var(--ambient-blob-opacity);
+    animation: ambient-drift 28s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes ambient-drift {
+    from {
+      transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    }
+    to {
+      transform: translate3d(-4%, 3%, 0) scale(1.14) rotate(8deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ambient::before {
+      animation: none;
+    }
   }
   .ambient::after {
     content: "";
@@ -370,18 +394,30 @@
       inset 0 1px 0 0 var(--glass-highlight);
   }
   .glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    background:
+      linear-gradient(160deg, var(--glass-sheen), transparent 46%),
+      var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
   }
   .glass-strong {
-    background: var(--glass-bg-strong);
-    backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.8);
-    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.8);
+    background:
+      linear-gradient(160deg, var(--glass-sheen), transparent 52%),
+      var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur-strong)) saturate(2);
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(2);
   }
-  /* high-count lists: translucent fill, NO blur (perf) */
+  /* high-count lists: lighter blur, enabled on desktop only (perf) */
   .glass-soft {
-    background: var(--glass-bg-soft);
+    background:
+      linear-gradient(160deg, var(--glass-sheen), transparent 46%),
+      var(--glass-bg-soft);
+  }
+  @media (min-width: 641px) {
+    .glass-soft {
+      backdrop-filter: blur(var(--glass-blur-soft)) saturate(1.6);
+      -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(1.6);
+    }
   }
   .glass-interactive {
     transition:
