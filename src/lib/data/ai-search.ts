@@ -56,6 +56,25 @@ export type AiCourseResult = {
 
 const dnLabel = (d: string | null | undefined) => (d === "N" ? "進修" : d === "D" ? "日間" : null);
 
+/**
+ * Resolve a department name/keyword → its row, preferring the 大學部 dept and,
+ * among equal candidates, the SHORTEST name (so 「教育系」→「教育學系」, not
+ * 「特殊教育學系」). Sourced from the authoritative `departments` table.
+ */
+async function resolveDept(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: string,
+): Promise<{ code: string; name: string } | null> {
+  const { data } = await supabase.from("departments").select("code, name");
+  const depts = (data ?? []) as { code: string; name: string }[];
+  const isUg = (n: string) => !/碩|博|在職|進修|學分班|專班/.test(n);
+  const kw = input.replace(/系所?$|學系$|學程$/u, "").trim();
+  let cands = depts.filter((d) => d.name === input || d.name.includes(kw) || (kw && kw.includes(d.name)));
+  if (!cands.length && kw) cands = depts.filter((d) => [...kw].every((ch) => d.name.includes(ch)));
+  cands.sort((a, b) => (isUg(b.name) ? 1 : 0) - (isUg(a.name) ? 1 : 0) || a.name.length - b.name.length);
+  return cands[0] ?? null;
+}
+
 /** Per-course (course_key) rating + tag aggregation from course_rating_summary. */
 async function fetchSummaries(
   keys: string[],
@@ -167,7 +186,7 @@ async function genEdCourses(): Promise<CourseGroup[]> {
   const codes = ((deptRows ?? []) as { code: string; name: string }[]).map((d) => d.code);
   const lists: CourseGroup[][] = [];
   for (const code of codes) {
-    const r = await listCourses({ semester, dept: code, pageSize: 300 });
+    const r = await listCourses({ semester, dept: code, pageSize: 300, withFacets: false });
     lists.push(r.items.filter((g) => g.name !== "通識教育"));
   }
   // Round-robin interleave so neither campus dominates the head (a later slice
@@ -199,7 +218,7 @@ export async function retrieveCourses(
   const isGenEd = /通識|博雅|通才/.test(query) && !department;
   let items = isGenEd
     ? await genEdCourses()
-    : (await listCourses({ q: query, dept: department, campus, pageSize: tags.length ? 36 : 12 })).items;
+    : (await listCourses({ q: query, dept: department, campus, pageSize: tags.length ? 36 : 12, withFacets: false })).items;
   if (campus && isGenEd) items = items.filter((g) => g.offerings[0]?.campus === campus);
   const sums = await fetchSummaries(items.map((c) => c.courseKey).filter(Boolean));
 
@@ -281,20 +300,8 @@ export async function listDeptCoursesForAI(args: {
   }
   if (!semester) return { error: "NO_SEMESTER", message: "目前沒有可用的學期資料。" };
 
-  // 2) resolve department name → code (prefer the 大學部 one, not 碩/博/在職)
-  const { data: deptRows } = await supabase.rpc("facet_departments", {
-    p_sem: semester,
-    p_level: null,
-    p_dn: null,
-    p_campus: null,
-  });
-  const depts = (deptRows ?? []) as { code: string; name: string }[];
-  const isUg = (n: string) => !/碩|博|在職|進修|學分班|專班/.test(n);
-  const kw = args.department.replace(/系所?$|學系$|學程$/u, "").trim();
-  let cands = depts.filter((d) => d.name === args.department || d.name.includes(kw) || kw.includes(d.name));
-  if (!cands.length && kw) cands = depts.filter((d) => [...kw].every((ch) => d.name.includes(ch)));
-  cands.sort((a, b) => (isUg(b.name) ? 1 : 0) - (isUg(a.name) ? 1 : 0) || a.name.length - b.name.length);
-  const dept = cands[0];
+  // 2) resolve department name → code (prefer 大學部, shortest-name tiebreak)
+  const dept = await resolveDept(supabase, args.department);
   if (!dept)
     return { error: "DEPT_NOT_FOUND", message: `找不到系所「${args.department}」，請確認名稱（可參考課程列表的系所名稱）。` };
 
@@ -319,11 +326,11 @@ export async function listDeptCoursesForAI(args: {
   const groups = new Map<string, CourseGroup>();
   if (classCodes) {
     for (const cc of classCodes) {
-      const r = await listCourses({ semester, dept: dept.code, classCode: cc, pageSize: 500 });
+      const r = await listCourses({ semester, dept: dept.code, classCode: cc, pageSize: 500, withFacets: false });
       for (const g of r.items) groups.set(g.courseKey + "|" + g.courseCode, g);
     }
   } else {
-    const r = await listCourses({ semester, dept: dept.code, pageSize: 500 });
+    const r = await listCourses({ semester, dept: dept.code, pageSize: 500, withFacets: false });
     for (const g of r.items) groups.set(g.courseKey + "|" + g.courseCode, g);
   }
   const list = [...groups.values()];
@@ -486,7 +493,7 @@ export async function buildScheduleForAI(args: {
       };
   }
 
-  const list = await listCourses({ semester, dept: deptCode, pageSize: 300 });
+  const list = await listCourses({ semester, dept: deptCode, pageSize: 300, withFacets: false });
   const sums = await fetchSummaries(list.items.map((c) => c.courseKey).filter(Boolean));
 
   const tags = args.tags?.filter(Boolean) ?? [];
@@ -573,10 +580,13 @@ export async function topCoursesForAI(args: {
         : args.by === "reviews"
           ? "review_count"
           : "avg_sweetness";
+  // Rating-based rankings need a minimum sample so a single 5.0 review can't top
+  // the chart; "most reviews" only needs >0.
+  const minReviews = args.by === "reviews" ? 1 : 3;
   const { data } = await supabase
     .from("course_rating_summary")
     .select("course_key, teacher_key, course_code, name, review_count, avg_sweetness, avg_coolness, avg_quality, tag_counts")
-    .gt("review_count", 0)
+    .gte("review_count", minReviews)
     .order(col, { ascending: false })
     .limit(Math.min(args.limit ?? 8, 20));
   const courses: RankedCourse[] = (data ?? []).map((s) => ({
@@ -615,16 +625,9 @@ export async function coursesByTimeForAI(args: {
   const semester = await latestSemester();
   if (!semester) return { error: "NO_SEMESTER", message: "目前沒有可用的學期資料。" };
 
-  let deptCode: string | undefined;
-  if (args.department) {
-    const { data: deptRows } = await supabase.rpc("facet_departments", { p_sem: semester, p_level: null, p_dn: null, p_campus: null });
-    const depts = (deptRows ?? []) as { code: string; name: string }[];
-    const kw = args.department.replace(/系所?$|學系$|學程$/u, "").trim();
-    const cand = depts.filter((d) => d.name === args.department || d.name.includes(kw) || (kw && [...kw].every((ch) => d.name.includes(ch))));
-    deptCode = cand.find((d) => !/碩|博|在職/.test(d.name))?.code ?? cand[0]?.code;
-  }
+  const deptCode = args.department ? (await resolveDept(supabase, args.department))?.code : undefined;
 
-  const r = await listCourses({ semester, dept: deptCode, pageSize: 4000 });
+  const r = await listCourses({ semester, dept: deptCode, pageSize: 4000, withFacets: false });
   const bucket = args.timeOfDay ? PERIOD_BUCKETS[args.timeOfDay] : null;
   const wd = args.weekday;
   const matched = r.items.filter((c) =>
