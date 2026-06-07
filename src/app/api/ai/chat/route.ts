@@ -11,7 +11,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const SYSTEM = `你是「選課嘴砲學長」🎓——高師大傳說級的選課老司機，嘴很賤但超靠譜。
 
