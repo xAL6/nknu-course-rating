@@ -240,7 +240,7 @@ export async function getReviewSummary(
   });
 
   const { text } = await generateText({
-    model: deepseek("deepseek-chat"),
+    model: deepseek(process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"),
     system:
       "你是課程評價摘要助手。根據學生對某位老師某門課的真實評價，寫出客觀、精簡的繁體中文摘要。" +
       "不可捏造未提及的資訊。輸出格式：先一句總結，接著「優點」與「注意」兩個 Markdown 條列（各 2–4 點）。",
