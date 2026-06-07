@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { listCourses, getCourse, latestSemester } from "./courses";
 import { getReviews } from "./reviews";
 import { fillRate, avgFillRate } from "@/lib/enrollment";
+import { formatSlots } from "@/lib/schedule";
 import { buildSchedule } from "@/lib/schedule-builder";
 import { PERIOD_ORDER } from "@/lib/period-shared";
 import type { CourseGroup, Slot } from "./types";
@@ -27,6 +28,11 @@ export type AiCourseResult = {
   credits: number | null;
   departments: string[];
   latestSemester: string;
+  /** 上課時間（最新一次開課），例如「週三 3,4」；無資料為「時間未定」。 */
+  classTime: string;
+  /** 上課教室與校區（最新一次開課）。 */
+  classroom: string | null;
+  campus: string | null;
   rating: AiRating | null;
   /** Aggregated quick-tag counts across this course's teachers, e.g. {可加簽: 12}. */
   tags: Record<string, number>;
@@ -107,6 +113,9 @@ function toAiResult(
     credits: c.credits,
     departments: c.departments,
     latestSemester: c.latestSemester,
+    classTime: formatSlots(c.offerings[0]?.slots ?? []),
+    classroom: c.offerings[0]?.classroom ?? null,
+    campus: c.offerings[0]?.campus ?? null,
     rating: exposeRating(s?.rating),
     tags: s?.tags ?? {},
     enrollFillRate: fillRate(c.offerings[0]?.enrollCount, c.offerings[0]?.enrollCap),
@@ -266,6 +275,12 @@ export type AiCourseDetail = {
   credits: number | null;
   departments: string[];
   semesters: string[];
+  /** 上課時間（最新一次開課），例如「週三 3,4」。 */
+  classTime: string;
+  classroom: string | null;
+  campus: string | null;
+  /** 各學期的上課時間/教室/老師（新到舊），回答「歷年/某學期幾點上課」用。 */
+  offerings: { semester: string; classTime: string; classroom: string | null; teachers: string[] }[];
   rating: AiRating | null;
   tags: Record<string, number>;
   /** latest-offering fill rate, and historical average across offerings. */
@@ -289,6 +304,15 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
     .map((c) => (c.length > 120 ? c.slice(0, 120) + "…" : c))
     .slice(0, 6);
 
+  const offs = [...course.offerings].sort((a, b) => b.semesterId.localeCompare(a.semesterId));
+  const latest = offs[0];
+  const offerings = offs.slice(0, 6).map((o) => ({
+    semester: o.semesterId,
+    classTime: formatSlots(o.slots),
+    classroom: o.classroom,
+    teachers: o.teachers,
+  }));
+
   return {
     courseKey,
     url: coursePath(courseKey),
@@ -296,10 +320,14 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
     teachers: course.teachers,
     credits: course.credits,
     departments: course.departments,
-    semesters: [...new Set(course.offerings.map((o) => o.semesterId))].sort((a, b) => b.localeCompare(a)),
+    semesters: [...new Set(offs.map((o) => o.semesterId))],
+    classTime: formatSlots(latest?.slots ?? []),
+    classroom: latest?.classroom ?? null,
+    campus: latest?.campus ?? null,
+    offerings,
     rating: exposeRating(s?.rating),
     tags: s?.tags ?? {},
-    enrollFillRate: fillRate(course.offerings[0]?.enrollCount, course.offerings[0]?.enrollCap),
+    enrollFillRate: fillRate(latest?.enrollCount, latest?.enrollCap),
     enrollAvgFillRate: avgFillRate(course.offerings).rate,
     reviewCount: s?.rating?.reviewCount ?? reviews.length,
     sampleComments,
