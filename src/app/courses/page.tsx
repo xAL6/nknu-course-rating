@@ -24,6 +24,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
     ...current,
     semester: current.q ? undefined : current.semester,
     page,
+    withSummary: true,
   });
 
   const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));

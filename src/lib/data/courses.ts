@@ -130,7 +130,61 @@ export type CourseListParams = {
   classCode?: string;
   page?: number;
   pageSize?: number;
+  /** Attach rating summaries to the returned cards (per course_key). */
+  withSummary?: boolean;
 };
+
+/**
+ * Batch-attach rating summaries to course cards. course_rating_summary is keyed
+ * by (course_key, teacher_key); a card (logical course) aggregates across its
+ * teachers — review counts summed, dimension averages weighted by review count.
+ */
+async function attachSummaries(
+  items: CourseGroup[],
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<void> {
+  const keys = [...new Set(items.map((g) => g.courseKey).filter(Boolean))];
+  if (!keys.length) return;
+  const acc = new Map<
+    string,
+    { n: number; sw: number; co: number; lo: number; qu: number; gr: number; tags: Record<string, number> }
+  >();
+  for (let i = 0; i < keys.length; i += 200) {
+    const { data } = await supabase
+      .from("course_rating_summary")
+      .select("course_key, review_count, avg_sweetness, avg_coolness, avg_loading, avg_quality, avg_grading, tag_counts")
+      .in("course_key", keys.slice(i, i + 200));
+    for (const s of data ?? []) {
+      const ck = s.course_key as string;
+      const n = (s.review_count as number) ?? 0;
+      const a = acc.get(ck) ?? { n: 0, sw: 0, co: 0, lo: 0, qu: 0, gr: 0, tags: {} };
+      a.n += n;
+      a.sw += ((s.avg_sweetness as number) ?? 0) * n;
+      a.co += ((s.avg_coolness as number) ?? 0) * n;
+      a.lo += ((s.avg_loading as number) ?? 0) * n;
+      a.qu += ((s.avg_quality as number) ?? 0) * n;
+      a.gr += ((s.avg_grading as number) ?? 0) * n;
+      for (const [t, v] of Object.entries((s.tag_counts as Record<string, number> | null) ?? {}))
+        a.tags[t] = (a.tags[t] ?? 0) + (v ?? 0);
+      acc.set(ck, a);
+    }
+  }
+  for (const g of items) {
+    const a = acc.get(g.courseKey);
+    g.summary =
+      a && a.n > 0
+        ? {
+            reviewCount: a.n,
+            sweetness: a.sw / a.n,
+            coolness: a.co / a.n,
+            loading: a.lo / a.n,
+            quality: a.qu / a.n,
+            grading: a.gr / a.n,
+            tagCounts: a.tags,
+          }
+        : null;
+  }
+}
 export type CourseListResult = {
   items: CourseGroup[];
   total: number;
@@ -207,10 +261,12 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
   // A free-text query (with no explicit semester chosen) searches across ALL
   // semesters, ranked by trigram similarity — see migration 0012.
   if (q && q.trim() && !params.semester) {
-    return searchCoursesRanked({ q: q.trim(), dayNight, campus, level, dept, page, pageSize }, {
+    const ranked = await searchCoursesRanked({ q: q.trim(), dayNight, campus, level, dept, page, pageSize }, {
       semesters,
       supabase,
     });
+    if (params.withSummary) await attachSummaries(ranked.items, supabase);
+    return ranked;
   }
 
   // Cascading facets (DISTINCT server-side via RPC).
@@ -269,8 +325,10 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
 
   const groups = groupCourses(offerings, "code").sort((a, b) => a.courseCode.localeCompare(b.courseCode));
   const start = (page - 1) * pageSize;
+  const items = groups.slice(start, start + pageSize);
+  if (params.withSummary) await attachSummaries(items, supabase);
   return {
-    items: groups.slice(start, start + pageSize),
+    items,
     total: groups.length,
     page,
     pageSize,
