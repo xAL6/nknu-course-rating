@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { Users } from "lucide-react";
 import { AddToTimetable } from "@/components/add-to-timetable";
+import { EnrollmentBadge } from "@/components/enrollment-badge";
 import { formatSlots } from "@/lib/schedule";
 import { RATING_DIMENSIONS } from "@/lib/config";
 import type { CourseGroup } from "@/lib/data/types";
@@ -90,13 +91,14 @@ export function CourseCard({ course, index = 0 }: { course: CourseGroup; index?:
       </div>
 
       <div className="relative z-10 mt-4 flex items-center justify-between border-t border-hairline pt-3">
-        <span className="flex items-center gap-1 text-xs text-mute">
+        <span className="flex items-center gap-1.5 text-xs text-mute">
           {latest?.enrollCap != null && (
-            <>
+            <span className="flex items-center gap-1">
               <Users className="size-3" />
               {latest.enrollCount}/{latest.enrollCap}
-            </>
+            </span>
           )}
+          <EnrollmentBadge count={latest?.enrollCount} cap={latest?.enrollCap} />
         </span>
         {canSchedule && latest && (
           <AddToTimetable
