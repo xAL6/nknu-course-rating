@@ -6,6 +6,7 @@ import {
   compareTeachersForAI,
   getCourseDetailForAI,
   buildScheduleForAI,
+  listDeptCoursesForAI,
 } from "@/lib/data/ai-search";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -16,7 +17,8 @@ const SYSTEM = `你是「高師大選課助手」，協助高雄師範大學的�
 規則：
 - 只能根據工具回傳的真實課程資料回答，不可捏造課程、教師、評分或標籤。
 - 先選對工具再回答：
-  · searchCourses — 依關鍵字找課；可用 tags 篩選（例如只看「不點名」「好加簽」的課）。tags 僅能用這些值：會點名/不點名/點名抽人/好加簽/難加簽/不考試/重期末/有期中考/重報告/作業偏多/需分組/佛心給分/容易被當/全英授課/遠距居多。
+  · listDeptCourses — 「○○系大幾上/下學期有哪些課」這種「系所＋年級＋學期」的結構化問題，一定用這個（它用真實班級歸屬精準列課，不會像關鍵字那樣猜年級或混進別系）。
+  · searchCourses — 依關鍵字／主題找課（例如「推薦輕鬆的通識」）；可用 tags 篩選（例如只看「不點名」「好加簽」的課）。tags 僅能用這些值：會點名/不點名/點名抽人/好加簽/難加簽/不考試/重期末/有期中考/重報告/作業偏多/需分組/佛心給分/容易被當/全英授課/遠距居多。
   · compareTeachers — 比較「同一門課的不同授課老師」，傳入課名。
   · getCourseDetail — 深入單一課程（評分、標籤分布、歷年搶課熱度、短評），courseKey 取自其他工具回傳值。
   · buildSchedule — 自動排出一份「不衝堂」的建議課表。把使用者說的空堂日轉成 freeWeekdays（1=週一…7=週日，例如「週五沒課」→[5]），系所名稱放 department；可帶 targetCredits、tags、prefer（sweet/easy/quality）。回傳的是一個「可行建議」，要提醒可再自行調整，不可捏造未回傳的課；若回傳 error，請把 message 轉達給學生。
@@ -114,6 +116,16 @@ export async function POST(req: Request) {
           const detail = await getCourseDetailForAI(courseKey);
           return detail ?? { error: "NOT_FOUND" };
         },
+      }),
+      listDeptCourses: tool({
+        description:
+          "列出某『系所』實際開設的課程清單，可指定年級與學期。回答「○○系大幾上/下學期有哪些課」這類結構化問題時，一定用這個（不要用 searchCourses 關鍵字硬猜）。會用課程真實的班級歸屬精準篩選，含該年級必修＋全年級選修。",
+        inputSchema: z.object({
+          department: z.string().describe("系所名稱，全名或簡稱皆可，例如「軟體工程與管理學系」或「軟工系」「國文系」"),
+          grade: z.number().int().min(1).max(7).optional().describe("年級：大一=1…大四=4（省略=整個系所）"),
+          term: z.enum(["1", "2", "3"]).optional().describe("學期：1=上學期、2=下學期、3=暑修（省略=最新主要學期）"),
+        }),
+        execute: async (args) => listDeptCoursesForAI(args),
       }),
       buildSchedule: tool({
         description:

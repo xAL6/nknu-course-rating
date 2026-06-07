@@ -154,6 +154,95 @@ export async function compareTeachersForAI(courseName: string): Promise<AiCourse
   return best;
 }
 
+const CJK_NUM = ["一", "二", "三", "四", "五", "六", "七"];
+
+export type DeptListResult =
+  | {
+      kind: "deptList";
+      semester: string;
+      department: string;
+      grade: number | null;
+      count: number;
+      courses: AiCourseResult[];
+    }
+  | { error: string; message: string };
+
+/**
+ * Structured course listing for "X系 [大四] [上學期] 有哪些課" — the precise
+ * answer the keyword search can't give. Resolves the department + grade to the
+ * exact class codes via the SAME facets the /courses page uses, then lists
+ * courses through the proven browse path (membership-array containment, so 合班/
+ * 跨班 課 are NOT missed). Grade includes that year's classes + all-grade electives.
+ */
+export async function listDeptCoursesForAI(args: {
+  department: string;
+  grade?: number;
+  term?: string;
+  semester?: string;
+}): Promise<DeptListResult> {
+  const supabase = await createClient();
+
+  // 1) resolve semester: explicit → latest of term → latest main term
+  let semester = args.semester;
+  if (!semester) {
+    const { data: semRows } = await supabase.from("semesters").select("id").order("id", { ascending: false });
+    const ids = (semRows ?? []).map((s) => s.id as string);
+    semester = (args.term ? ids.find((id) => id.endsWith(`-${args.term}`)) : ids.find((id) => !id.endsWith("-3"))) ?? ids[0];
+  }
+  if (!semester) return { error: "NO_SEMESTER", message: "目前沒有可用的學期資料。" };
+
+  // 2) resolve department name → code (prefer the 大學部 one, not 碩/博/在職)
+  const { data: deptRows } = await supabase.rpc("facet_departments", {
+    p_sem: semester,
+    p_level: null,
+    p_dn: null,
+    p_campus: null,
+  });
+  const depts = (deptRows ?? []) as { code: string; name: string }[];
+  const isUg = (n: string) => !/碩|博|在職|進修|學分班|專班/.test(n);
+  const kw = args.department.replace(/系所?$|學系$|學程$/u, "").trim();
+  let cands = depts.filter((d) => d.name === args.department || d.name.includes(kw) || kw.includes(d.name));
+  if (!cands.length && kw) cands = depts.filter((d) => [...kw].every((ch) => d.name.includes(ch)));
+  cands.sort((a, b) => (isUg(b.name) ? 1 : 0) - (isUg(a.name) ? 1 : 0) || a.name.length - b.name.length);
+  const dept = cands[0];
+  if (!dept)
+    return { error: "DEPT_NOT_FOUND", message: `找不到系所「${args.department}」，請確認名稱（可參考課程列表的系所名稱）。` };
+
+  // 3) grade → class codes (that year + all-grade electives) via facet_classes
+  let classCodes: string[] | null = null;
+  if (args.grade && args.grade >= 1 && args.grade <= 7) {
+    const { data: classRows } = await supabase.rpc("facet_classes", {
+      p_sem: semester,
+      p_level: null,
+      p_dn: null,
+      p_campus: null,
+      p_dept: dept.code,
+    });
+    const classes = (classRows ?? []) as { code: string; name: string }[];
+    const gstr = CJK_NUM[args.grade - 1] + "年級";
+    const matched = classes.filter((c) => c.name.includes(gstr) || /全年級|不分年級/.test(c.name));
+    classCodes = matched.map((c) => c.code);
+    if (!classCodes.length) classCodes = null; // no such grade → fall back to whole dept
+  }
+
+  // 4) list via the proven browse path; union over the grade's class codes
+  const groups = new Map<string, CourseGroup>();
+  if (classCodes) {
+    for (const cc of classCodes) {
+      const r = await listCourses({ semester, dept: dept.code, classCode: cc, pageSize: 500 });
+      for (const g of r.items) groups.set(g.courseKey + "|" + g.courseCode, g);
+    }
+  } else {
+    const r = await listCourses({ semester, dept: dept.code, pageSize: 500 });
+    for (const g of r.items) groups.set(g.courseKey + "|" + g.courseCode, g);
+  }
+  const list = [...groups.values()];
+  const sums = await fetchSummaries(list.map((g) => g.courseKey).filter(Boolean));
+  const courses = list.map((g) => toAiResult(g, sums.get(g.courseKey))).slice(0, 80);
+
+  return { kind: "deptList", semester, department: dept.name, grade: args.grade ?? null, count: courses.length, courses };
+}
+
 export type AiCourseDetail = {
   courseKey: string;
   name: string;
