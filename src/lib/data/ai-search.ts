@@ -151,27 +151,57 @@ function toAiResult(
  * summaries, quick tags, and 搶課熱度. Optionally filter to courses carrying
  * ALL of `opts.tags`. Returns compact records the model can reason over (RAG).
  */
+/**
+ * Real 通識（博雅）electives live under the 通識 departments (GR8xx, varied names),
+ * NOT under the literal name「通識教育」(which is each dept's placeholder slot). A
+ * keyword search for「通識」would only hit the placeholders, so route gen-ed asks
+ * to the actual 通識 departments instead.
+ */
+async function genEdCourses(): Promise<CourseGroup[]> {
+  const supabase = await createClient();
+  const semester = await latestSemester();
+  if (!semester) return [];
+  const { data: deptRows } = await supabase.rpc("facet_departments", {
+    p_sem: semester,
+    p_level: null,
+    p_dn: null,
+    p_campus: null,
+  });
+  const codes = ((deptRows ?? []) as { code: string; name: string }[])
+    .filter((d) => d.name.includes("通識"))
+    .map((d) => d.code);
+  const groups = new Map<string, CourseGroup>();
+  for (const code of codes) {
+    const r = await listCourses({ semester, dept: code, pageSize: 300 });
+    for (const g of r.items) if (g.name !== "通識教育") groups.set(g.courseKey + "|" + g.courseCode, g);
+  }
+  return [...groups.values()];
+}
+
 export async function retrieveCourses(
   query: string,
   department?: string,
   opts?: { tags?: string[] },
 ): Promise<AiCourseResult[]> {
   const tags = opts?.tags?.filter(Boolean) ?? [];
-  // Widen the candidate pool when tag-filtering, since few courses carry tags.
-  const result = await listCourses({ q: query, dept: department, pageSize: tags.length ? 36 : 12 });
-  const sums = await fetchSummaries(result.items.map((c) => c.courseKey).filter(Boolean));
+  // 通識／博雅 category asks → list real gen-ed electives, not a「通識」name search.
+  const isGenEd = /通識|博雅|通才/.test(query) && !department;
+  const items = isGenEd
+    ? await genEdCourses()
+    : (await listCourses({ q: query, dept: department, pageSize: tags.length ? 36 : 12 })).items;
+  const sums = await fetchSummaries(items.map((c) => c.courseKey).filter(Boolean));
 
-  const courses = result.items.map((c) => toAiResult(c, sums.get(c.courseKey)));
+  const courses = items.map((c) => toAiResult(c, sums.get(c.courseKey)));
   if (tags.length) {
     const tagged = courses.filter((c) => tags.every((t) => (c.tags[t] ?? 0) > 0));
     // Few courses carry tags (UGC is sparse). Returning only tagged hits makes the
     // model keep re-searching; so when tagged results are thin, also include the
     // top keyword matches (the model can see which actually carry the tag).
     if (tagged.length >= 4) return tagged.slice(0, 12);
-    const rest = courses.filter((c) => !tagged.includes(c)).slice(0, 10);
-    return [...tagged, ...rest].slice(0, 12);
+    const rest = courses.filter((c) => !tagged.includes(c)).slice(0, 12);
+    return [...tagged, ...rest].slice(0, 14);
   }
-  return courses;
+  return courses.slice(0, 16);
 }
 
 /**
