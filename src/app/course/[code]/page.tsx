@@ -198,7 +198,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                           className="rounded-2xl border border-[var(--glass-border)] bg-[color-mix(in_oklch,var(--card)_55%,transparent)] p-5 sm:p-6"
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3">
+                            <div className="flex min-w-0 items-center gap-3">
                               <span
                                 className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold"
                                 style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}
@@ -206,8 +206,8 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                               >
                                 {r.displayName.slice(0, 1)}
                               </span>
-                              <div className="leading-tight">
-                                <div className="text-sm font-semibold text-ink">{r.displayName}</div>
+                              <div className="min-w-0 leading-tight">
+                                <div className="truncate text-sm font-semibold text-ink">{r.displayName}</div>
                                 <div className="mt-0.5 text-xs text-mute">
                                   {r.semesterId && `${semLabel(r.semesterId)} 修課`}
                                   {r.semesterId && " · "}
