@@ -195,21 +195,22 @@ export async function POST(req: Request) {
         description:
           "搜尋高師大課程資料庫，依關鍵字（課名、教師、主題）取得課程、評分摘要、快速標籤與搶課熱度。可用 tags 篩選（例如只看『不點名』『可加簽』的課）。",
         inputSchema: z.object({
-          query: z.string().describe("搜尋關鍵字，例如課名、教師姓名或主題"),
+          query: z.string().describe("搜尋關鍵字，例如課名、教師姓名或主題；找通識用「通識」"),
           department: z.string().optional().describe("系所代碼（可選）"),
+          campus: z.enum(["和平", "燕巢"]).optional().describe("校區篩選：和平 或 燕巢（問『燕巢的課』時帶上）"),
           tags: z
             .array(z.string())
             .optional()
             .describe('只回傳同時帶有這些快速標籤的課，例如 ["不點名","好加簽"]'),
         }),
-        execute: async ({ query, department, tags }) => {
+        execute: async ({ query, department, campus, tags }) => {
           if (++searchCalls > SEARCH_CAP) {
             return {
               limitReached: true,
               note: "已搜尋多次，請『直接用前面已經拿到的搜尋結果』作答，不要再呼叫任何工具。",
             };
           }
-          const courses = await retrieveCourses(query, department, { tags });
+          const courses = await retrieveCourses(query, department, { tags, campus });
           return { count: courses.length, courses };
         },
       }),
