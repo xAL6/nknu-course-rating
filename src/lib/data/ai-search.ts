@@ -28,17 +28,33 @@ export type AiCourseResult = {
   credits: number | null;
   departments: string[];
   latestSemester: string;
+  /** 必修／選修／通識… （最新一次開課）。 */
+  courseType: string | null;
+  /** 是否為學年課（需上下學期連修）。 */
+  yearLong: boolean;
+  /** 學制：大學部／碩士班／博士班… */
+  degreeLevel: string | null;
+  /** 日間／進修。 */
+  dayNight: string | null;
+  /** 開課班級／年級，例如「軟體工程與管理學系四年級」。 */
+  className: string | null;
   /** 上課時間（最新一次開課），例如「週三 3,4」；無資料為「時間未定」。 */
   classTime: string;
   /** 上課教室與校區（最新一次開課）。 */
   classroom: string | null;
   campus: string | null;
+  /** 課程大綱（syllabus）連結；null 表示沒有。 */
+  syllabusUrl: string | null;
+  /** 評價則數（彙總）。 */
+  reviewCount: number;
   rating: AiRating | null;
   /** Aggregated quick-tag counts across this course's teachers, e.g. {可加簽: 12}. */
   tags: Record<string, number>;
   /** 選課人數 / 名額 of the latest offering (搶課熱度); null when unknown. */
   enrollFillRate: number | null;
 };
+
+const dnLabel = (d: string | null | undefined) => (d === "N" ? "進修" : d === "D" ? "日間" : null);
 
 /** Per-course (course_key) rating + tag aggregation from course_rating_summary. */
 async function fetchSummaries(
@@ -103,6 +119,7 @@ function toAiResult(
   c: CourseGroup,
   s?: { rating: AiRating; tags: Record<string, number> },
 ): AiCourseResult {
+  const o = c.offerings[0];
   return {
     courseKey: c.courseKey,
     url: coursePath(c.courseKey),
@@ -113,12 +130,19 @@ function toAiResult(
     credits: c.credits,
     departments: c.departments,
     latestSemester: c.latestSemester,
-    classTime: formatSlots(c.offerings[0]?.slots ?? []),
-    classroom: c.offerings[0]?.classroom ?? null,
-    campus: c.offerings[0]?.campus ?? null,
+    courseType: o?.courseType ?? null,
+    yearLong: o?.category === "Y",
+    degreeLevel: o?.degreeLevel ?? c.degreeLevel ?? null,
+    dayNight: dnLabel(o?.dayNight),
+    className: o?.className ?? null,
+    classTime: formatSlots(o?.slots ?? []),
+    classroom: o?.classroom ?? null,
+    campus: o?.campus ?? null,
+    syllabusUrl: o?.syllabusUrl ?? null,
+    reviewCount: s?.rating?.reviewCount ?? 0,
     rating: exposeRating(s?.rating),
     tags: s?.tags ?? {},
-    enrollFillRate: fillRate(c.offerings[0]?.enrollCount, c.offerings[0]?.enrollCap),
+    enrollFillRate: fillRate(o?.enrollCount, o?.enrollCap),
   };
 }
 
@@ -275,12 +299,27 @@ export type AiCourseDetail = {
   credits: number | null;
   departments: string[];
   semesters: string[];
+  courseType: string | null;
+  yearLong: boolean;
+  degreeLevel: string | null;
+  className: string | null;
   /** 上課時間（最新一次開課），例如「週三 3,4」。 */
   classTime: string;
   classroom: string | null;
   campus: string | null;
-  /** 各學期的上課時間/教室/老師（新到舊），回答「歷年/某學期幾點上課」用。 */
-  offerings: { semester: string; classTime: string; classroom: string | null; teachers: string[] }[];
+  syllabusUrl: string | null;
+  /** 各學期的上課時間/教室/老師/日夜/選課率（新到舊），回答「歷年/某學期」用。 */
+  offerings: {
+    semester: string;
+    classTime: string;
+    classroom: string | null;
+    campus: string | null;
+    teachers: string[];
+    courseType: string | null;
+    dayNight: string | null;
+    enrollFillRate: number | null;
+    syllabusUrl: string | null;
+  }[];
   rating: AiRating | null;
   tags: Record<string, number>;
   /** latest-offering fill rate, and historical average across offerings. */
@@ -310,7 +349,12 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
     semester: o.semesterId,
     classTime: formatSlots(o.slots),
     classroom: o.classroom,
+    campus: o.campus ?? null,
     teachers: o.teachers,
+    courseType: o.courseType ?? null,
+    dayNight: dnLabel(o.dayNight),
+    enrollFillRate: fillRate(o.enrollCount, o.enrollCap),
+    syllabusUrl: o.syllabusUrl ?? null,
   }));
 
   return {
@@ -321,9 +365,14 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
     credits: course.credits,
     departments: course.departments,
     semesters: [...new Set(offs.map((o) => o.semesterId))],
+    courseType: latest?.courseType ?? null,
+    yearLong: latest?.category === "Y",
+    degreeLevel: latest?.degreeLevel ?? course.degreeLevel ?? null,
+    className: latest?.className ?? null,
     classTime: formatSlots(latest?.slots ?? []),
     classroom: latest?.classroom ?? null,
     campus: latest?.campus ?? null,
+    syllabusUrl: latest?.syllabusUrl ?? null,
     offerings,
     rating: exposeRating(s?.rating),
     tags: s?.tags ?? {},
