@@ -18,6 +18,8 @@ export type AiRating = {
 
 export type AiCourseResult = {
   courseKey: string;
+  /** Ready-to-use, URL-encoded course page path — the model must link to THIS. */
+  url: string;
   courseCode: string;
   name: string;
   nameEn: string | null;
@@ -91,6 +93,7 @@ function toAiResult(
 ): AiCourseResult {
   return {
     courseKey: c.courseKey,
+    url: "/course/" + encodeURIComponent(c.courseKey),
     courseCode: c.courseCode,
     name: c.name,
     nameEn: c.nameEn,
@@ -245,6 +248,7 @@ export async function listDeptCoursesForAI(args: {
 
 export type AiCourseDetail = {
   courseKey: string;
+  url: string;
   name: string;
   teachers: string[];
   credits: number | null;
@@ -275,6 +279,7 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
 
   return {
     courseKey,
+    url: "/course/" + encodeURIComponent(courseKey),
     name: course.name,
     teachers: course.teachers,
     credits: course.credits,

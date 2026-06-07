@@ -34,7 +34,7 @@ const SYSTEM = `你是「高師大選課助手」，協助高雄師範大學的�
   · 比較老師：只呼叫 compareTeachers 一次。排課：只呼叫 buildSchedule 一次。
   · 拿到工具結果後，「立刻用文字給出結論」。嚴禁反覆搜尋；最後務必輸出文字回答，不可只丟工具結果。
   · 課程沒有評分(rating 為 null)也沒關係，照樣可以推薦，只要誠實說明「尚無評價」。
-- 提到課程時，務必用 Markdown 連結語法附上課程頁面，格式為 [課名（課號）](/course/courseKey)，courseKey 取自工具回傳的 courseKey 欄位，方便學生點擊查看。`;
+- 提到課程時，務必用 Markdown 連結附上課程頁面：[課名（課號）](url)。**url 必須直接用工具回傳的 `url` 欄位原字串**（已編碼好），不要自己用 courseKey 組裝、也不要改寫，否則含括號的課名（如「專題(二)」）連結會壞掉。`;
 
 // Signed-in NKNU students get a higher allowance than anonymous visitors.
 const ANON_LIMIT = 8; // requests
