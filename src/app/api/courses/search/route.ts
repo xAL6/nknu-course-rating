@@ -1,17 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { listCourses, latestSemester } from "@/lib/data/courses";
+import { searchTimetableCourses, latestSemester } from "@/lib/data/courses";
 
-/** Lightweight course search for the timetable add-panel (single semester). */
+/** Timetable course search — scoped to a TERM (1/2/3) across all academic years. */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
-  // Timetables are semester-scoped: default to the latest term so we don't pull
-  // cross-semester offerings (that path is for the /courses browse search).
-  const semester = searchParams.get("semester") ?? (await latestSemester()) ?? undefined;
   if (q.trim().length < 1) return NextResponse.json({ items: [] });
 
-  const result = await listCourses({ q, semester, pageSize: 20 });
-  const items = result.items.map((c) => {
+  // term: explicit ?term=1|2|3, else the latest main term.
+  const term = searchParams.get("term") ?? (await latestSemester())?.split("-")[1] ?? "2";
+
+  const groups = await searchTimetableCourses(q, term, 40);
+  const items = groups.map((c) => {
     const o = c.offerings[0];
     return {
       courseCode: c.courseCode,

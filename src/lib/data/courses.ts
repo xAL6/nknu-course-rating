@@ -160,6 +160,38 @@ export async function latestSemester(): Promise<string | null> {
   return pickMain((data ?? []).map((s) => s.id as string));
 }
 
+/**
+ * Timetable search — scope to a TERM (1/2/3) across ALL academic years, deduped
+ * to the latest offering per logical course, ranked by the trigram search. Lets
+ * the add-panel find courses by term without being trapped in one specific year.
+ */
+export async function searchTimetableCourses(q: string, term: string, limit = 40): Promise<CourseGroup[]> {
+  if (!isSupabaseConfigured() || !q.trim()) return [];
+  const supabase = await createClient();
+  const { data: semRows } = await supabase.from("semesters").select("id");
+  const sems = (semRows ?? []).map((s) => s.id as string).filter((id) => id.split("-")[1] === term);
+  if (!sems.length) return [];
+
+  const { data: ranked } = await supabase.rpc("search_courses", { p_q: q.trim(), p_limit: 150 });
+  const keys = ((ranked ?? []) as { course_key: string }[]).map((r) => r.course_key);
+  if (!keys.length) return [];
+  const order = new Map(keys.map((k, i) => [k, i] as const));
+
+  const offerings: Offering[] = [];
+  for (let i = 0; i < keys.length; i += 150) {
+    const chunk = keys.slice(i, i + 150);
+    const { data } = await supabase
+      .from("courses")
+      .select(SELECT)
+      .in("course_key", chunk)
+      .in("semester_id", sems);
+    offerings.push(...(data ?? []).map((r) => rowToOffering(r as unknown as CourseRow)));
+  }
+  const groups = groupCourses(offerings, "logical"); // one card per logical course, latest offering first
+  groups.sort((a, b) => (order.get(a.courseKey) ?? 1e9) - (order.get(b.courseKey) ?? 1e9));
+  return groups.slice(0, limit);
+}
+
 export async function listCourses(params: CourseListParams): Promise<CourseListResult> {
   if (!isSupabaseConfigured()) return listFromFixture(params);
   const { q, dayNight, campus, level, dept, classCode, page = 1, pageSize = 24 } = params;

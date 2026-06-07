@@ -11,6 +11,7 @@ import {
   clearTimetable,
   replaceTimetable,
   timetableSemester,
+  timetableTerm,
   encodeShare,
   decodeShare,
   buildSlotMap,
@@ -35,11 +36,15 @@ const WEEKDAYS = [1, 2, 3, 4, 5, 6];
 
 type SearchItem = TimetableCourse & { credits: number | null };
 
-export function TimetableBuilder() {
+export function TimetableBuilder({ defaultTerm = "2" }: { defaultTerm?: string }) {
   const courses = useTimetable();
   const slotMap = buildSlotMap(courses);
   const hasConflict = [...slotMap.values()].some((arr) => arr.length > 1);
   const semester = timetableSemester(courses);
+  const lockedTerm = timetableTerm(courses);
+  const [pickedTerm, setPickedTerm] = useState(defaultTerm);
+  // Once a course is added the term is locked to it; otherwise the user picks.
+  const term = lockedTerm ?? pickedTerm;
   // Cross-campus commute warnings: same-day campus switches with ≤1 free period.
   const commuteIssues = findCommuteIssues(courses, PERIODS).filter((i) => i.gap <= 1);
 
@@ -59,7 +64,7 @@ export function TimetableBuilder() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div className="min-w-0">
-        <Toolbar courses={courses} semester={semester} />
+        <Toolbar courses={courses} semester={semester} term={term} />
         {hasConflict && (
           <div className="mb-3 flex items-center gap-2 rounded-md border border-warning-soft bg-warning-soft/50 px-3 py-2 text-sm text-warning-deep">
             <AlertTriangle className="size-4" /> 課表有衝堂，紅色格子為衝突時段。
@@ -84,7 +89,8 @@ export function TimetableBuilder() {
       </div>
 
       <aside className="space-y-4">
-        <AddPanel semester={semester} />
+        <TermPicker term={term} setTerm={setPickedTerm} locked={!!lockedTerm} />
+        <AddPanel term={term} />
         <SelectedList courses={courses} />
       </aside>
     </div>
@@ -94,9 +100,11 @@ export function TimetableBuilder() {
 function Toolbar({
   courses,
   semester,
+  term,
 }: {
   courses: TimetableCourse[];
   semester: string | null;
+  term: string;
 }) {
   const [saving, startSave] = useTransition();
   const [loadingAcct, startLoad] = useTransition();
@@ -144,11 +152,9 @@ function Toolbar({
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
-      {semester && (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-canvas-soft px-3 py-1 text-xs font-medium text-body">
-          <CalendarRange className="size-3.5" /> {semLabel(semester)}・本學期
-        </span>
-      )}
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-canvas-soft px-3 py-1 text-xs font-medium text-body">
+        <CalendarRange className="size-3.5" /> {SEMESTER_TERMS[term] ?? term}・跨學年
+      </span>
       <div className="ml-auto flex items-center gap-2">
         <button
           onClick={() => {
@@ -264,7 +270,52 @@ function Grid({
   );
 }
 
-function AddPanel({ semester }: { semester: string | null }) {
+function TermPicker({
+  term,
+  setTerm,
+  locked,
+}: {
+  term: string;
+  setTerm: (t: string) => void;
+  locked: boolean;
+}) {
+  const OPTS: [string, string][] = [
+    ["1", "第一學期"],
+    ["2", "第二學期"],
+    ["3", "暑修"],
+  ];
+  return (
+    <div className="glass rounded-lg p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium">選擇學期</h2>
+        {locked && <span className="text-[11px] text-mute">已鎖定・清空課表可改</span>}
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        {OPTS.map(([v, label]) => {
+          const active = term === v;
+          return (
+            <button
+              key={v}
+              disabled={locked}
+              onClick={() => setTerm(v)}
+              className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
+                active
+                  ? ""
+                  : "border border-hairline text-body hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+              }`}
+              style={active ? { backgroundColor: "var(--accent)", color: "#1b1206" } : undefined}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[11px] text-mute">搜尋會找此學期所有學年度的課（跨學年，不限特定學年）。</p>
+    </div>
+  );
+}
+
+function AddPanel({ term }: { term: string }) {
   const [q, setQ] = useState("");
   const [items, setItems] = useState<SearchItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -279,9 +330,7 @@ function AddPanel({ semester }: { semester: string | null }) {
       }
       setLoading(true);
       try {
-        // Once a timetable is locked to a semester, scope the search to it.
-        const qs = new URLSearchParams({ q });
-        if (semester) qs.set("semester", semester);
+        const qs = new URLSearchParams({ q, term });
         const res = await fetch(`/api/courses/search?${qs.toString()}`);
         const data = await res.json();
         setItems(data.items ?? []);
@@ -289,11 +338,14 @@ function AddPanel({ semester }: { semester: string | null }) {
         setLoading(false);
       }
     }, 300);
-  }, [q, semester]);
+  }, [q, term]);
 
   return (
     <div className="glass rounded-lg p-4">
-      <h2 className="text-sm font-medium">加入課程</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium">加入課程</h2>
+        {q.trim() && !loading && <span className="text-[11px] text-mute">共 {items.length} 門</span>}
+      </div>
       <div className="relative mt-2">
         <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-mute" />
         <input
