@@ -38,7 +38,7 @@ export function AiCourseCards({ courses }: { courses: AiCard[] }) {
             <div className="flex items-start justify-between gap-2">
               <span className="min-w-0 truncate text-sm font-medium text-ink">{c.name}</span>
               {c.credits != null && (
-                <span className="shrink-0 text-[11px] text-mute">{c.credits} 學分</span>
+                <span className="shrink-0 text-xs text-mute">{c.credits} 學分</span>
               )}
             </div>
             {c.teachers?.length ? (
@@ -60,7 +60,7 @@ export function AiCourseCards({ courses }: { courses: AiCard[] }) {
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-mute">
+              <span className="text-xs text-mute">
                 {c.rating?.reviewCount ? `${c.rating.reviewCount} 則評價` : "尚無評價"}
               </span>
               <EnrollmentBadge rate={c.enrollFillRate ?? null} />

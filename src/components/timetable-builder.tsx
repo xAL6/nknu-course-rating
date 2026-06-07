@@ -210,7 +210,7 @@ function Grid({
         <table className="w-full border-separate border-spacing-1 text-center">
           <thead>
             <tr>
-              <th className="w-11 rounded-lg py-2 text-[11px] font-normal text-mute" style={{ background: headBg }}>
+              <th className="w-11 rounded-lg py-2 text-xs font-normal text-mute" style={{ background: headBg }}>
                 節次
               </th>
               {WEEKDAYS.map((wd) => (
@@ -229,7 +229,7 @@ function Grid({
               <tr key={p}>
                 <td className="rounded-lg py-1 align-middle" style={{ background: headBg }}>
                   <div className="text-sm font-semibold text-body">{p}</div>
-                  <div className="text-[9px] leading-tight text-mute">{PERIOD_TIMES[p] ?? ""}</div>
+                  <div className="text-[10px] leading-tight text-mute">{PERIOD_TIMES[p] ?? ""}</div>
                 </td>
                 {WEEKDAYS.map((wd) => {
                   const here = slotMap.get(`${wd}-${p}`) ?? [];
@@ -251,9 +251,9 @@ function Grid({
                               campusFromRoom(c.campus ?? c.classroom) ? `（${campusFromRoom(c.campus ?? c.classroom)}）` : ""
                             }`}
                           >
-                            <span className="line-clamp-2 text-[11px] font-semibold">{c.name}</span>
+                            <span className="line-clamp-2 text-xs font-semibold">{c.name}</span>
                             {c.classroom && (
-                              <span className="mt-0.5 block truncate text-[10px] text-white/80">{c.classroom}</span>
+                              <span className="mt-0.5 block truncate text-[11px] text-white/85">{c.classroom}</span>
                             )}
                           </Link>
                         ))}
@@ -288,7 +288,7 @@ function TermPicker({
     <div className="glass rounded-lg p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium">選擇學期</h2>
-        {locked && <span className="text-[11px] text-mute">已鎖定・清空課表可改</span>}
+        {locked && <span className="text-xs text-mute">已鎖定・清空課表可改</span>}
       </div>
       <div className="mt-2 grid grid-cols-3 gap-1.5">
         {OPTS.map(([v, label]) => {
@@ -310,7 +310,7 @@ function TermPicker({
           );
         })}
       </div>
-      <p className="mt-2 text-[11px] text-mute">搜尋會找此學期所有學年度的課（跨學年，不限特定學年）。</p>
+      <p className="mt-2 text-xs text-mute">搜尋會找此學期所有學年度的課（跨學年，不限特定學年）。</p>
     </div>
   );
 }
@@ -344,7 +344,7 @@ function AddPanel({ term }: { term: string }) {
     <div className="glass rounded-lg p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium">加入課程</h2>
-        {q.trim() && !loading && <span className="text-[11px] text-mute">共 {items.length} 門</span>}
+        {q.trim() && !loading && <span className="text-xs text-mute">共 {items.length} 門</span>}
       </div>
       <div className="relative mt-2">
         <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-mute" />
