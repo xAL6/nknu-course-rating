@@ -23,12 +23,12 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
           name="q"
           defaultValue={q ?? ""}
           placeholder="搜尋教師姓名…"
-          className="h-10 w-full rounded-md border border-hairline bg-canvas pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="glass-soft h-10 w-full rounded-md pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-link/30"
         />
       </form>
 
       {teachers.length === 0 ? (
-        <div className="mt-12 rounded-lg bg-canvas-soft p-12 text-center text-sm text-mute">
+        <div className="glass mt-12 rounded-lg p-12 text-center text-sm text-mute">
           找不到教師。
         </div>
       ) : (
@@ -37,7 +37,7 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
             <Link
               key={t.name}
               href={`/teacher/${encodeURIComponent(t.name)}`}
-              className="elev-1 hover:elev-2 flex items-center justify-between gap-2 rounded-lg bg-canvas px-4 py-3 transition-shadow"
+              className="glass-soft glass-interactive flex items-center justify-between gap-2 rounded-lg px-4 py-3"
             >
               <span className="truncate font-medium">{t.name}</span>
               <span className="flex shrink-0 items-center gap-1 text-xs text-mute">

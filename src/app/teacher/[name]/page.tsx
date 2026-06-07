@@ -50,7 +50,7 @@ export default async function TeacherPage({ params }: { params: Promise<{ name: 
                 <Link
                   key={c.courseCode}
                   href={`/course/${encodeURIComponent(c.courseKey)}`}
-                  className="elev-1 hover:elev-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-canvas px-4 py-3 transition-shadow"
+                  className="glass-soft glass-interactive flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-4 py-3"
                 >
                   <span className="font-mono text-xs text-mute">{c.courseCode}</span>
                   <span className="font-medium">{c.name}</span>
@@ -65,7 +65,7 @@ export default async function TeacherPage({ params }: { params: Promise<{ name: 
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">
-          <div className="elev-2 rounded-lg bg-canvas p-5">
+          <div className="glass rounded-lg p-5">
             <h2 className="text-sm font-medium tracking-tight text-body">教師綜合評分</h2>
             <p className="mt-1 text-xs text-mute">跨所有課程平均</p>
             <div className="mt-4">

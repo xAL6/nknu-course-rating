@@ -44,7 +44,7 @@ export function ReviewSummaryAI({
       )}
 
       {result?.status === "ok" && (
-        <div className="rounded-md bg-canvas-soft p-3">
+        <div className="glass-soft rounded-md p-3">
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-violet">
             <Sparkles className="size-3.5" /> AI 評價摘要
             {result.cached ? "" : "（即時產生）"}

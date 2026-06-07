@@ -3,7 +3,7 @@ import { SITE_NAME, SITE_NAME_EN } from "@/lib/config";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-hairline bg-canvas">
+    <footer className="glass mt-auto">
       <div className="mx-auto grid max-w-[1400px] gap-8 px-6 py-16 sm:grid-cols-2 md:grid-cols-4">
         <div className="col-span-2 md:col-span-1">
           <div className="font-mono text-xs uppercase tracking-wide text-mute">{SITE_NAME_EN}</div>

@@ -41,7 +41,7 @@ export function MobileNav() {
             className="fixed inset-0 top-16 z-40 bg-ink/20 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <nav className="fixed inset-x-0 top-16 z-50 border-b border-hairline bg-canvas p-4 shadow-lg">
+          <nav className="glass-strong fixed inset-x-0 top-16 z-50 p-4">
             <div className="flex flex-col gap-1">
               {LINKS.map((l) => (
                 <Link
