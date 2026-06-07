@@ -145,20 +145,20 @@
   --accent-soft: color-mix(in oklch, #b06f00 14%, transparent);
   --accent-line: color-mix(in oklch, #b06f00 30%, transparent);
 
-  /* refined light glass (toggle) */
-  --ambient-base: #f1f0ec;
-  --ambient-blob-opacity: 0.5;
+  /* refined light glass (toggle) — high frost intensity */
+  --ambient-base: #eeede8;
+  --ambient-blob-opacity: 0.7;
   --ambient-grain-opacity: 0.015;
-  --glass-bg: color-mix(in oklch, white 58%, transparent);
-  --glass-bg-strong: color-mix(in oklch, white 74%, transparent);
-  --glass-bg-soft: color-mix(in oklch, white 62%, transparent);
-  --glass-border: color-mix(in oklch, #0a0a0a 8%, transparent);
-  --glass-highlight: color-mix(in oklch, white 92%, transparent);
-  --glass-sheen: color-mix(in oklch, white 60%, transparent);
-  --glass-shadow: 0 18px 42px -24px rgb(0 0 0 / 0.18);
-  --glass-blur: 18px;
-  --glass-blur-strong: 28px;
-  --glass-blur-soft: 12px;
+  --glass-bg: color-mix(in oklch, white 44%, transparent);
+  --glass-bg-strong: color-mix(in oklch, white 60%, transparent);
+  --glass-bg-soft: color-mix(in oklch, white 48%, transparent);
+  --glass-border: color-mix(in oklch, white 70%, transparent);
+  --glass-highlight: color-mix(in oklch, white 95%, transparent);
+  --glass-sheen: color-mix(in oklch, white 65%, transparent);
+  --glass-shadow: 0 18px 44px -22px rgb(0 0 0 / 0.2);
+  --glass-blur: 26px;
+  --glass-blur-strong: 40px;
+  --glass-blur-soft: 18px;
 }
 
 .dark {
@@ -211,20 +211,20 @@
   --accent-soft: color-mix(in oklch, #f5b13d 16%, transparent);
   --accent-line: color-mix(in oklch, #f5b13d 34%, transparent);
 
-  /* refined dark glass (default) */
+  /* refined dark glass (default) — high frost intensity */
   --ambient-base: #0a0a0c;
-  --ambient-blob-opacity: 0.6;
-  --ambient-grain-opacity: 0.04;
-  --glass-bg: color-mix(in oklch, #16161d 50%, transparent);
-  --glass-bg-strong: color-mix(in oklch, #131319 66%, transparent);
-  --glass-bg-soft: color-mix(in oklch, #17171f 56%, transparent);
-  --glass-border: color-mix(in oklch, white 16%, transparent);
-  --glass-highlight: color-mix(in oklch, white 22%, transparent);
-  --glass-sheen: color-mix(in oklch, white 10%, transparent);
-  --glass-shadow: 0 18px 50px -22px rgb(0 0 0 / 0.62);
-  --glass-blur: 20px;
-  --glass-blur-strong: 30px;
-  --glass-blur-soft: 14px;
+  --ambient-blob-opacity: 0.85;
+  --ambient-grain-opacity: 0.045;
+  --glass-bg: color-mix(in oklch, #15151c 34%, transparent);
+  --glass-bg-strong: color-mix(in oklch, #121218 52%, transparent);
+  --glass-bg-soft: color-mix(in oklch, #16161e 38%, transparent);
+  --glass-border: color-mix(in oklch, white 22%, transparent);
+  --glass-highlight: color-mix(in oklch, white 32%, transparent);
+  --glass-sheen: color-mix(in oklch, white 16%, transparent);
+  --glass-shadow: 0 20px 56px -22px rgb(0 0 0 / 0.66);
+  --glass-blur: 30px;
+  --glass-blur-strong: 46px;
+  --glass-blur-soft: 22px;
 }
 
 @layer base {
@@ -372,15 +372,18 @@
     overflow: hidden;
     background: var(--ambient-base);
   }
-  /* one restrained warm glow in the single brand accent (no rainbow) */
+  /* warm-gold glow pools spread across the viewport (single accent, no rainbow)
+     — gives the frosted glass real content to refract everywhere you scroll */
   .ambient::before {
     content: "";
     position: absolute;
     inset: -20%;
     background:
-      radial-gradient(55% 45% at 78% -8%, var(--accent) 0%, transparent 58%),
-      radial-gradient(45% 40% at 12% 6%, color-mix(in oklch, var(--accent) 55%, transparent) 0%, transparent 60%);
-    filter: blur(90px) saturate(0.9);
+      radial-gradient(38% 34% at 82% 6%, var(--accent) 0%, transparent 60%),
+      radial-gradient(40% 38% at 8% 30%, color-mix(in oklch, var(--accent) 78%, transparent) 0%, transparent 62%),
+      radial-gradient(44% 40% at 70% 72%, color-mix(in oklch, var(--accent) 60%, transparent) 0%, transparent 64%),
+      radial-gradient(34% 32% at 30% 96%, color-mix(in oklch, var(--accent) 50%, transparent) 0%, transparent 64%);
+    filter: blur(80px) saturate(1);
     opacity: var(--ambient-blob-opacity);
     animation: ambient-drift 48s ease-in-out infinite alternate;
     will-change: transform;
