@@ -15,6 +15,8 @@ import {
   getCourseDetailForAI,
   buildScheduleForAI,
   listDeptCoursesForAI,
+  topCoursesForAI,
+  coursesByTimeForAI,
 } from "@/lib/data/ai-search";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -49,6 +51,9 @@ const SYSTEM = `你是高師大的選課老司機，講話機掰、嗆辣、台�
   · compareTeachers — 比較「同一門課的不同授課老師」，傳入課名。
   · getCourseDetail — 深入單一課程（評分、標籤分布、歷年搶課熱度、短評），courseKey 取自其他工具回傳值。
   · buildSchedule — 自動排出一份「不衝堂」的建議課表。把使用者說的空堂日轉成 freeWeekdays（1=週一…7=週日，例如「週五沒課」→[5]），系所名稱放 department；可帶 targetCredits、tags、prefer（sweet/easy/quality）。回傳的是一個「可行建議」，要提醒可再自行調整，不可捏造未回傳的課；若回傳 error，請把 message 轉達給學生。
+  · topCourses — 排行榜（全校最甜／最涼／收穫最高／最多人評價的課）。「最…的課」「排行」用這個，by=sweet/cool/takeaway/reviews。
+  · coursesByTime — 依「星期＋時段」找課（「週X早上/下午/晚上有哪些課」）。weekday 1–7、timeOfDay morning/afternoon/evening；要涼/甜用 prefer 排序。
+- **能用工具就一定用工具，不要說「系統不支援」「搜不到」「時間沒辦法搜」然後叫使用者補資料**：問時段→coursesByTime、問排行/最…→topCourses、問系所年級→listDeptCourses。
 - 評分面向：甜度(給分甜)、涼度(輕鬆)、收穫(學到多少/內容紮實)。分數 1–5。
 - 工具回傳的 tags 是同學標記的「快速標籤」與其次數（例如 {"好加簽":12,"會點名":8}），代表點名/加簽/考試/作業/授課形式等事實面向。可引用標籤與次數佐證（例如「12 人標『好加簽』」），不可捏造未出現的標籤。
 - enrollFillRate 是「選課人數 / 名額」比例：越接近或超過 1 代表越搶手、越難選上；可用來回答「選上機率／好不好搶」。
@@ -259,6 +264,26 @@ export async function POST(req: Request) {
           avoidCrossCampus: z.boolean().optional().describe("是否避開跨校區緊接，預設 true"),
         }),
         execute: async (args) => buildScheduleForAI(args),
+      }),
+      topCourses: tool({
+        description:
+          "課程排行榜：回傳全校評分最高或最多人評的課。回答「全校最甜／最涼／收穫最高／最多人評價的課」這類排行問題時用這個（依真實評分資料排序，不要用 searchCourses 硬湊）。",
+        inputSchema: z.object({
+          by: z.enum(["sweet", "cool", "takeaway", "reviews"]).optional().describe("排序依據：sweet=甜度、cool=涼度、takeaway=收穫、reviews=評價數，預設 sweet"),
+          limit: z.number().int().min(1).max(20).optional().describe("回傳幾門，預設 8"),
+        }),
+        execute: async (args) => topCoursesForAI(args),
+      }),
+      coursesByTime: tool({
+        description:
+          "依『星期＋時段』找課，回答「週X早上/下午/晚上有哪些課（涼/甜的）」這類問題。weekday 1=週一…7=週日；timeOfDay morning(1–4節)/afternoon(5–10節)/evening(A–D節)。可選 department、prefer 排序。",
+        inputSchema: z.object({
+          weekday: z.number().int().min(1).max(7).describe("星期：1=週一…7=週日"),
+          timeOfDay: z.enum(["morning", "afternoon", "evening"]).optional().describe("時段：早上/下午/晚上"),
+          department: z.string().optional().describe("系所名稱（可選，縮小範圍）"),
+          prefer: z.enum(["sweet", "cool", "takeaway"]).optional().describe("排序偏好，預設 cool（涼）"),
+        }),
+        execute: async (args) => coursesByTimeForAI(args),
       }),
     },
   });
