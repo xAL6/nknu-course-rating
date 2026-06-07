@@ -17,3 +17,6 @@ export const PERIOD_TIMES: Record<string, string> = {
   C: "20:20–21:10",
   D: "21:15–22:05",
 };
+
+/** Canonical period ordering (08:10 → 22:05). Used for adjacency/commute checks. */
+export const PERIOD_ORDER: string[] = Object.keys(PERIOD_TIMES);
