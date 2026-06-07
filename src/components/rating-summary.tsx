@@ -30,7 +30,7 @@ export function RatingSummaryBars({
                 style={{ width: `${pct}%`, backgroundColor: d.color }}
               />
             </div>
-            <span className="w-8 shrink-0 text-right font-mono text-xs text-body">
+            <span className="w-9 shrink-0 text-right font-mono text-sm font-medium text-body">
               {v ? v.toFixed(1) : "—"}
             </span>
           </div>

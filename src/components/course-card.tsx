@@ -7,18 +7,10 @@ import { EnrollmentBadge } from "@/components/enrollment-badge";
 import { formatSlots } from "@/lib/schedule";
 import type { CourseGroup } from "@/lib/data/types";
 
-const ACCENTS = ["#ff0080", "#0070f3", "#00dfd8", "#7928ca", "#f5a623"];
-function accentFor(s: string) {
-  let h = 0;
-  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return ACCENTS[h % ACCENTS.length];
-}
-
 export function CourseCard({ course, index = 0 }: { course: CourseGroup; index?: number }) {
   const latest = course.offerings[0];
   const yearLong = course.offerings.some((o) => o.category === "Y");
   const canSchedule = (latest?.slots?.length ?? 0) > 0;
-  const accent = accentFor(course.courseCode + course.name);
   const hasRating = !!course.summary && course.summary.reviewCount > 0;
   const meta = [latest?.teachers?.[0] ?? course.teachers[0], latest && formatSlots(latest.slots)]
     .filter(Boolean)
@@ -32,11 +24,10 @@ export function CourseCard({ course, index = 0 }: { course: CourseGroup; index?:
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: (index % 12) * 0.035 }}
       whileHover={{
         y: -6,
-        borderColor: accent,
-        boxShadow: `0 18px 46px -20px ${accent}66`,
+        borderColor: "var(--accent)",
+        boxShadow: "0 18px 46px -20px var(--accent-line)",
         transition: { type: "spring", stiffness: 340, damping: 22 },
       }}
-      style={{ ["--accent" as string]: accent }}
       className="group glass-soft glass-interactive relative flex flex-col rounded-2xl p-5"
     >
       {/* whole card navigates */}
@@ -50,13 +41,13 @@ export function CourseCard({ course, index = 0 }: { course: CourseGroup; index?:
         <div className="flex items-start justify-between gap-3">
           <span
             className="font-mono text-xs font-medium tracking-wide"
-            style={{ color: accent }}
+            style={{ color: "var(--accent)" }}
           >
             {course.courseCode}
           </span>
           <div className="flex shrink-0 items-center gap-1.5 text-xs text-mute">
             {yearLong && (
-              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ color: accent, backgroundColor: `${accent}1a` }}>
+              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ color: "var(--accent)", backgroundColor: "var(--accent-soft)" }}>
                 學年
               </span>
             )}

@@ -6,6 +6,7 @@ export type CurrentUser = {
   id: string;
   email: string | null;
   displayName: string;
+  avatarUrl: string | null;
   allowed: boolean;
 };
 
@@ -19,7 +20,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name")
+    .select("display_name, avatar_url")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -27,6 +28,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     id: user.id,
     email: user.email ?? null,
     displayName: profile?.display_name ?? "同學",
+    avatarUrl: (profile?.avatar_url as string | null) ?? null,
     allowed: isAllowedEmail(user.email),
   };
 }

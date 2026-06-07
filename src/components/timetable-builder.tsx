@@ -20,6 +20,9 @@ import { saveTimetable, loadTimetable } from "@/lib/actions";
 import { SEMESTER_TERMS } from "@/lib/config";
 import { WEEKDAY_LABELS, PERIOD_TIMES } from "@/lib/period-shared";
 import { findCommuteIssues, campusFromRoom } from "@/lib/campus";
+import { colorFor } from "@/lib/timetable-colors";
+import { downloadTimetablePng } from "@/lib/timetable-image";
+import { Download } from "lucide-react";
 
 const semLabel = (id: string | null) => {
   if (!id) return null;
@@ -29,20 +32,6 @@ const semLabel = (id: string | null) => {
 
 const PERIODS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "A", "B", "C", "D"];
 const WEEKDAYS = [1, 2, 3, 4, 5, 6];
-
-const PALETTE = [
-  "var(--rate-grading)",
-  "var(--rate-quality)",
-  "var(--rate-sweet)",
-  "var(--cyan)",
-  "var(--warning)",
-  "var(--rate-load)",
-];
-function colorFor(code: string) {
-  let h = 0;
-  for (const ch of code) h = (h * 31 + ch.charCodeAt(0)) % PALETTE.length;
-  return PALETTE[h];
-}
 
 type SearchItem = TimetableCourse & { credits: number | null };
 
@@ -162,6 +151,19 @@ function Toolbar({
       )}
       <div className="ml-auto flex items-center gap-2">
         <button
+          onClick={() => {
+            if (!courses.length) return toast("課表是空的，先加入課程吧。");
+            const d = new Date();
+            const ds = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+            downloadTimetablePng(courses, semLabel(semester), ds);
+            toast.success("課表圖片已下載");
+          }}
+          className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-[color:var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
+          style={{ border: "1px solid var(--accent-line)" }}
+        >
+          <Download className="size-3.5" /> 下載課表
+        </button>
+        <button
           onClick={share}
           className="flex items-center gap-1 rounded-full border border-hairline px-3 py-1 text-xs text-body transition-colors hover:bg-secondary"
         >
@@ -194,54 +196,70 @@ function Grid({
   slotMap: ReturnType<typeof buildSlotMap>;
 }) {
   void courses;
+  const cellBg = "color-mix(in oklch, var(--ink) 4%, transparent)";
+  const headBg = "color-mix(in oklch, var(--ink) 7%, transparent)";
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-center text-xs">
-        <thead>
-          <tr>
-            <th className="w-14 border border-hairline bg-canvas-soft p-1 font-normal text-mute">節次</th>
-            {WEEKDAYS.map((wd) => (
-              <th key={wd} className="border border-hairline bg-canvas-soft p-1 font-medium">
-                {WEEKDAY_LABELS[wd]}
+    <div className="glass overflow-hidden rounded-2xl p-2 sm:p-3">
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate border-spacing-1 text-center">
+          <thead>
+            <tr>
+              <th className="w-11 rounded-lg py-2 text-[11px] font-normal text-mute" style={{ background: headBg }}>
+                節次
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {PERIODS.map((p) => (
-            <tr key={p}>
-              <td className="border border-hairline bg-canvas-soft p-1 align-middle">
-                <div className="font-medium">{p}</div>
-                <div className="text-[10px] leading-tight text-mute">{PERIOD_TIMES[p] ?? ""}</div>
-              </td>
-              {WEEKDAYS.map((wd) => {
-                const here = slotMap.get(`${wd}-${p}`) ?? [];
-                const conflict = here.length > 1;
-                return (
-                  <td
-                    key={wd}
-                    className={`h-12 min-w-[88px] border border-hairline p-0.5 align-top ${conflict ? "bg-error-soft/60" : ""}`}
-                  >
-                    {here.map((c) => (
-                      <Link
-                        key={c.courseCode + c.syllabusNo}
-                        href={`/course/${encodeURIComponent(c.courseKey || c.courseCode)}`}
-                        className="mb-0.5 block rounded px-1 py-0.5 text-left text-[11px] leading-tight text-white"
-                        style={{ backgroundColor: conflict ? "var(--error)" : colorFor(c.courseCode) }}
-                        title={`${c.name}${c.classroom ? ` · ${c.classroom}` : ""}${
-                          campusFromRoom(c.campus ?? c.classroom) ? `（${campusFromRoom(c.campus ?? c.classroom)}）` : ""
-                        }`}
-                      >
-                        <span className="line-clamp-2">{c.name}</span>
-                      </Link>
-                    ))}
-                  </td>
-                );
-              })}
+              {WEEKDAYS.map((wd) => (
+                <th
+                  key={wd}
+                  className="min-w-[96px] rounded-lg py-2 text-sm font-semibold text-ink"
+                  style={{ background: headBg }}
+                >
+                  {WEEKDAY_LABELS[wd]}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {PERIODS.map((p) => (
+              <tr key={p}>
+                <td className="rounded-lg py-1 align-middle" style={{ background: headBg }}>
+                  <div className="text-sm font-semibold text-body">{p}</div>
+                  <div className="text-[9px] leading-tight text-mute">{PERIOD_TIMES[p] ?? ""}</div>
+                </td>
+                {WEEKDAYS.map((wd) => {
+                  const here = slotMap.get(`${wd}-${p}`) ?? [];
+                  const conflict = here.length > 1;
+                  return (
+                    <td
+                      key={wd}
+                      className="h-14 min-w-[96px] rounded-lg p-1 align-top"
+                      style={{ background: cellBg }}
+                    >
+                      <div className="flex h-full flex-col gap-1">
+                        {here.map((c) => (
+                          <Link
+                            key={c.courseCode + c.syllabusNo}
+                            href={`/course/${encodeURIComponent(c.courseKey || c.courseCode)}`}
+                            className="block flex-1 rounded-md px-1.5 py-1 text-left leading-tight text-white shadow-sm transition-transform duration-150 hover:scale-[1.04]"
+                            style={{ backgroundColor: conflict ? "var(--error)" : colorFor(c.courseCode) }}
+                            title={`${c.name}${c.classroom ? ` · ${c.classroom}` : ""}${
+                              campusFromRoom(c.campus ?? c.classroom) ? `（${campusFromRoom(c.campus ?? c.classroom)}）` : ""
+                            }`}
+                          >
+                            <span className="line-clamp-2 text-[11px] font-semibold">{c.name}</span>
+                            {c.classroom && (
+                              <span className="mt-0.5 block truncate text-[10px] text-white/80">{c.classroom}</span>
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

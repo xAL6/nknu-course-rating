@@ -29,7 +29,7 @@ function AuthInner() {
       </div>
       <h1 className="mt-6 text-2xl font-semibold tracking-tight">登入 {SITE_NAME}</h1>
       <p className="mt-2 text-sm text-body">
-        使用高師大 Google 學校信箱登入,即可撰寫評價、收藏課程與排課。
+        使用高師大 Google 學校信箱登入,即可撰寫評價與排課。
       </p>
 
       {error === "domain" && (

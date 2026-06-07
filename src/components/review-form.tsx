@@ -149,26 +149,13 @@ export function ReviewForm({
       </div>
 
       <div>
-        <Label htmlFor="shortComment" className="text-sm">
-          一句話短評
-        </Label>
-        <input
-          id="shortComment"
-          name="shortComment"
-          maxLength={100}
-          placeholder="例：甜涼好過，但要交期末報告"
-          className="glass-soft mt-1.5 h-10 w-full rounded-md px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-link/30"
-        />
-      </div>
-
-      <div>
         <Label htmlFor="body" className="text-sm">
-          詳細心得（選填）
+          修課心得
         </Label>
         <Textarea
           id="body"
           name="body"
-          rows={5}
+          rows={6}
           maxLength={5000}
           placeholder="分享評分方式、作業份量、考試型態、教學風格…"
           className="mt-1.5"

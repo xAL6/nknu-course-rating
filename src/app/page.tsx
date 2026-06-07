@@ -5,28 +5,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/reveal";
 import { CountUp } from "@/components/count-up";
-import { Marquee } from "@/components/marquee";
+import { ReviewMarquee } from "@/components/review-marquee";
 import { SITE_TAGLINE } from "@/lib/config";
-import { getHomeStats, getTrendingCourses, getDepartmentNames } from "@/lib/data/community";
+import { getHomeStats, getTrendingCourses, getRecentReviews } from "@/lib/data/community";
 
 const RATE = [
-  { label: "甜度", v: 86, c: "var(--rate-sweet)" },
-  { label: "涼度", v: 72, c: "var(--rate-cool)" },
-  { label: "負擔", v: 40, c: "var(--rate-load)" },
-  { label: "品質", v: 92, c: "var(--rate-quality)" },
-  { label: "給分", v: 80, c: "var(--rate-grading)" },
+  { label: "甜度", v: 86, c: "var(--accent)" },
+  { label: "涼度", v: 72, c: "var(--accent)" },
+  { label: "收穫", v: 92, c: "var(--accent)" },
 ];
 
 export default async function Home() {
-  const [stats, trending, depts] = await Promise.all([
+  const [stats, trending, recentReviews] = await Promise.all([
     getHomeStats(),
     getTrendingCourses(6),
-    getDepartmentNames(36),
+    getRecentReviews(16),
   ]);
-  const marquee = depts.map((d) => ({
-    label: d.name,
-    href: `/courses?dept=${encodeURIComponent(d.code)}`,
-  }));
 
   return (
     <>
@@ -36,7 +30,7 @@ export default async function Home() {
           {/* copy */}
           <div className="text-center lg:text-left">
             <span className="glass-strong animate-rise inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-xs text-body">
-              <span className="size-2 rounded-full" style={{ backgroundColor: "var(--rate-sweet)" }} /> 高師大・選課評價
+              <span className="size-2 rounded-full" style={{ backgroundColor: "var(--accent)" }} /> 高師大・選課評價
             </span>
             <h1
               className="animate-rise mt-6 text-[2.6rem] leading-[1.04] font-semibold tracking-tight text-balance sm:text-6xl"
@@ -44,7 +38,7 @@ export default async function Home() {
             >
               選課前,先看看
               <br />
-              <span style={{ color: "var(--rate-sweet)" }}>學長姐</span>怎麼說。
+              <span style={{ color: "var(--accent)" }}>學長姐</span>怎麼說。
             </h1>
             <p
               className="animate-rise mx-auto mt-5 max-w-md text-lg text-body text-pretty lg:mx-0"
@@ -101,11 +95,11 @@ export default async function Home() {
               <div className="glass animate-float relative rounded-3xl p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-mono text-xs text-rate-grading">EN201</div>
+                    <div className="font-mono text-xs" style={{ color: "var(--accent)" }}>EN201</div>
                     <h3 className="mt-1 text-xl font-semibold tracking-tight">英文寫作（一）</h3>
                     <p className="mt-0.5 text-xs text-mute">周雋 · 週三 3,4</p>
                   </div>
-                  <span className="rounded-full bg-[color-mix(in_oklch,var(--rate-grading)_16%,transparent)] px-2 py-0.5 text-xs font-medium text-rate-grading">
+                  <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs font-medium" style={{ color: "var(--accent)" }}>
                     4.6 ★
                   </span>
                 </div>
@@ -121,17 +115,18 @@ export default async function Home() {
                 </div>
                 <div className="mt-5 flex items-center justify-between border-t border-hairline pt-4 text-xs text-mute">
                   <span>52 則評價</span>
-                  <span className="text-rate-quality">品質頂尖</span>
+                  <span style={{ color: "var(--accent)" }}>收穫滿滿</span>
                 </div>
               </div>
             </div>
           </Reveal>
         </div>
 
-        {/* department marquee */}
-        {marquee.length > 0 && (
+        {/* live review ticker */}
+        {recentReviews.length >= 3 && (
           <div className="relative mx-auto max-w-[1400px] px-6 pb-14">
-            <Marquee items={marquee} />
+            <p className="mb-3 px-1 text-xs font-medium tracking-wide text-mute">學長姐怎麼說</p>
+            <ReviewMarquee reviews={recentReviews} />
           </div>
         )}
       </section>
@@ -147,14 +142,14 @@ export default async function Home() {
             <BentoBig />
           </Reveal>
           <Reveal delay={0.1}>
-            <Bento color="var(--rate-quality)" icon={<Sparkles className="size-5" />} title="AI 課程助手" desc="一句話描述需求,從同學評價中推薦。" />
+            <Bento color="var(--accent)" icon={<Sparkles className="size-5" />} title="AI 課程助手" desc="一句話描述需求,從同學評價中推薦。" />
           </Reveal>
           <Reveal delay={0.15}>
-            <Bento color="var(--rate-cool)" icon={<CalendarRange className="size-5" />} title="排課模擬" desc="加課自動偵測衝堂,一眼看懂一週。" />
+            <Bento color="var(--accent)" icon={<CalendarRange className="size-5" />} title="排課模擬" desc="加課自動偵測衝堂,一眼看懂一週。" />
           </Reveal>
           <Reveal className="md:col-span-3" delay={0.2}>
             <Bento
-              color="var(--rate-grading)"
+              color="var(--accent)"
               icon={<Layers className="size-5" />}
               title="跨學期搜尋・每位老師各自評分"
               desc="搜尋跨所有學年期,同一門課的歷年開課自動合併;每位老師的版本分開評分,選課更精準。"
@@ -168,7 +163,7 @@ export default async function Home() {
       <section className="mx-auto max-w-[1240px] px-6 pb-24">
         <Reveal>
           <div className="flex items-center gap-2">
-            <Flame className="size-5 text-rate-sweet" />
+            <Flame className="size-5" style={{ color: "var(--accent)" }} />
             <h2 className="text-lg font-semibold tracking-tight">熱門課程</h2>
           </div>
         </Reveal>
@@ -183,15 +178,19 @@ export default async function Home() {
                 >
                   <span
                     className="grid size-9 shrink-0 place-items-center rounded-lg font-mono text-sm font-semibold"
-                    style={{ color: RANK[i % RANK.length], backgroundColor: `color-mix(in oklch, ${RANK[i % RANK.length]} 16%, transparent)` }}
+                    style={
+                      i < 3
+                        ? { color: "var(--accent)", backgroundColor: "var(--accent-soft)" }
+                        : { color: "var(--mute)", backgroundColor: "color-mix(in oklch, var(--ink) 7%, transparent)" }
+                    }
                   >
                     {i + 1}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium group-hover:text-link">{t.name}</span>
+                    <span className="block truncate font-medium transition-colors group-hover:text-[var(--accent)]">{t.name}</span>
                     <span className="block truncate text-xs text-mute">{t.teachers.join("、") || t.courseCode}</span>
                   </span>
-                  {t.avgQuality != null && <span className="shrink-0 text-xs font-medium text-rate-quality">品質 {t.avgQuality.toFixed(1)}</span>}
+                  {t.avgQuality != null && <span className="shrink-0 text-xs font-medium" style={{ color: "var(--accent)" }}>收穫 {t.avgQuality.toFixed(1)}</span>}
                 </Link>
               ))}
             </div>
@@ -213,8 +212,6 @@ export default async function Home() {
   );
 }
 
-const RANK = ["var(--rate-sweet)", "var(--rate-grading)", "var(--rate-cool)", "var(--rate-quality)", "var(--rate-load)"];
-
 function Stat({ n, label }: { n: number; label: string }) {
   return (
     <div className="flex items-baseline gap-1.5">
@@ -227,11 +224,11 @@ function Stat({ n, label }: { n: number; label: string }) {
 function BentoBig() {
   return (
     <div className="glass glass-interactive relative flex h-full flex-col overflow-hidden rounded-2xl p-6">
-      <div className="flex size-11 items-center justify-center rounded-xl" style={{ color: "var(--rate-sweet)", backgroundColor: "color-mix(in oklch, var(--rate-sweet) 14%, transparent)" }}>
+      <div className="flex size-11 items-center justify-center rounded-xl" style={{ color: "var(--accent)", backgroundColor: "var(--accent-soft)" }}>
         <Star className="size-5" />
       </div>
-      <h3 className="mt-4 text-xl font-semibold tracking-tight">五維度評價</h3>
-      <p className="mt-2 max-w-sm text-sm text-body">甜度、涼度、負擔、品質、給分——量化每門課的真實樣貌,不再只看一個總分。</p>
+      <h3 className="mt-4 text-xl font-semibold tracking-tight">三維度評分</h3>
+      <p className="mt-2 max-w-sm text-sm text-body">甜度、涼度、收穫——三個面向量化每門課的真實樣貌,不再只看一個總分。</p>
       <div className="mt-auto space-y-2 pt-6">
         {RATE.map((r) => (
           <div key={r.label} className="flex items-center gap-3">
