@@ -81,6 +81,12 @@ async function fetchSummaries(
   return out;
 }
 
+// Course page path for the AI to link to. encodeURIComponent leaves ()!*'~
+// unescaped — and a literal ) closes a Markdown link early — so encode parens too.
+function coursePath(courseKey: string): string {
+  return "/course/" + encodeURIComponent(courseKey).replace(/\(/g, "%28").replace(/\)/g, "%29");
+}
+
 // The product only surfaces 3 dimensions (甜度/涼度/收穫); hide the legacy
 // loading/grading from the model so it never cites removed dimensions.
 function exposeRating(r: AiRating | null | undefined): AiRating | null {
@@ -93,7 +99,7 @@ function toAiResult(
 ): AiCourseResult {
   return {
     courseKey: c.courseKey,
-    url: "/course/" + encodeURIComponent(c.courseKey),
+    url: coursePath(c.courseKey),
     courseCode: c.courseCode,
     name: c.name,
     nameEn: c.nameEn,
@@ -279,7 +285,7 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
 
   return {
     courseKey,
-    url: "/course/" + encodeURIComponent(courseKey),
+    url: coursePath(courseKey),
     name: course.name,
     teachers: course.teachers,
     credits: course.credits,
