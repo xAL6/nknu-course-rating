@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
   if (!existing) {
     await supabase.from("profiles").insert({ user_id: user.id, display_name: randomDisplayName() });
+    // First sign-in → onboarding so they can pick a name + avatar.
+    return NextResponse.redirect(new URL("/me?welcome=1", origin));
   }
 
   return NextResponse.redirect(new URL(next, origin));

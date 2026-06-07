@@ -5,6 +5,7 @@ import { z } from "zod";
 import { generateText } from "ai";
 import { deepseek } from "@ai-sdk/deepseek";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getReviews } from "@/lib/data/reviews";
 import {
   isAllowedEmail,
@@ -90,6 +91,53 @@ export async function submitReview(formData: FormData) {
   revalidatePath(`/course/${input.courseKey}`);
   revalidatePath("/leaderboard");
   return { ok: true };
+}
+
+const MIME_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+/**
+ * Update the signed-in user's profile: display name and (optional) avatar.
+ * Avatar is uploaded with the service-role client to avatars/<uid>/… (bucket is
+ * public-read). The new name is also snapshotted onto the user's past reviews
+ * and comments so it stays consistent.
+ */
+export async function updateProfile(formData: FormData) {
+  const { user } = await requireUser();
+  const admin = createAdminClient();
+
+  const name = String(formData.get("displayName") ?? "").trim();
+  if (name.length < 1 || name.length > 20) throw new Error("INVALID_NAME");
+
+  const patch: { display_name: string; avatar_url?: string } = { display_name: name };
+
+  const file = formData.get("avatar");
+  if (file instanceof File && file.size > 0) {
+    if (file.size > 2_097_152) throw new Error("FILE_TOO_LARGE");
+    const ext = MIME_EXT[file.type];
+    if (!ext) throw new Error("BAD_FILE_TYPE");
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const buf = await file.arrayBuffer();
+    const { error: upErr } = await admin.storage
+      .from("avatars")
+      .upload(path, buf, { contentType: file.type, upsert: true });
+    if (upErr) throw new Error("UPLOAD_FAILED");
+    patch.avatar_url = admin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  }
+
+  const { error } = await admin.from("profiles").update(patch).eq("user_id", user.id);
+  if (error) throw error;
+
+  // Keep the snapshotted name consistent on existing UGC.
+  await admin.from("reviews").update({ display_name: name }).eq("user_id", user.id);
+  await admin.from("comments").update({ display_name: name }).eq("user_id", user.id);
+
+  revalidatePath("/me");
+  return { ok: true, displayName: name, avatarUrl: patch.avatar_url ?? null };
 }
 
 const voteKind = z.enum(["like", "useful", "not_useful"]);

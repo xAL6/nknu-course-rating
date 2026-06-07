@@ -205,13 +205,22 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-3">
-                              <span
-                                className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold"
-                                style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}
-                                aria-hidden
-                              >
-                                {r.displayName.slice(0, 1)}
-                              </span>
+                              {r.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={r.avatarUrl}
+                                  alt=""
+                                  className="size-9 shrink-0 rounded-full object-cover"
+                                />
+                              ) : (
+                                <span
+                                  className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold"
+                                  style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}
+                                  aria-hidden
+                                >
+                                  {r.displayName.slice(0, 1)}
+                                </span>
+                              )}
                               <div className="min-w-0 leading-tight">
                                 <div className="truncate text-sm font-semibold text-ink">{r.displayName}</div>
                                 <div className="mt-0.5 truncate text-xs text-mute">
