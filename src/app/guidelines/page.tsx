@@ -8,7 +8,7 @@ export default function GuidelinesPage() {
       <ul className="mt-4 list-disc space-y-2 pl-5 text-body">
         <li>對事不對人:聚焦在課程內容、評分方式、作業與考試,避免人身攻擊。</li>
         <li>據實分享:根據自己實際的修課經驗,不誇大也不抹黑。</li>
-        <li>具體有用:說明甜度/涼度/負擔的原因,讓學弟妹能判斷是否適合自己。</li>
+        <li>具體有用:說明甜度/涼度/收穫的原因,讓學弟妹能判斷是否適合自己。</li>
         <li>尊重多元:每個人的標準不同,理性討論。</li>
         <li>禁止洩漏考題、轉售作業或張貼廣告。</li>
       </ul>

@@ -63,7 +63,7 @@ export default async function LeaderboardPage() {
                     </div>
                   </div>
                   {t.avgQuality != null && (
-                    <span className="shrink-0 text-xs text-mute">品質 {t.avgQuality.toFixed(1)}</span>
+                    <span className="shrink-0 text-xs text-mute">收穫 {t.avgQuality.toFixed(1)}</span>
                   )}
                   <span className="shrink-0 text-xs text-mute">{t.reviewCount} 則</span>
                 </Link>

@@ -22,16 +22,16 @@ export function isAllowedEmail(email: string | null | undefined): boolean {
 }
 
 /**
- * The five rating dimensions, mirroring 甜度/涼度/loading from the reference
- * sites plus 品質 and 給分. Each is scored 1–5. `higherIsBetter` controls how
- * the aggregate color/label is interpreted.
+ * The three rating dimensions, mirroring the classic 甜度/涼度 from the reference
+ * sites plus 收穫 (how much you actually learn — stored in the `quality` column).
+ * Each is scored 1–5. `higherIsBetter` controls how the aggregate color/label is
+ * interpreted. NOTE: the DB still has `loading`/`grading` columns for legacy
+ * rows; they're simply no longer collected or shown.
  */
 export const RATING_DIMENSIONS = [
-  { key: "sweetness", label: "甜度", labelEn: "Sweetness", hint: "給分甜不甜", color: "var(--rate-sweet)", higherIsBetter: true },
-  { key: "coolness", label: "涼度", labelEn: "Coolness", hint: "課程輕不輕鬆", color: "var(--rate-cool)", higherIsBetter: true },
-  { key: "loading", label: "負擔", labelEn: "Loading", hint: "作業考試多寡", color: "var(--rate-load)", higherIsBetter: false },
-  { key: "quality", label: "品質", labelEn: "Quality", hint: "教學內容紮實度", color: "var(--rate-quality)", higherIsBetter: true },
-  { key: "grading", label: "給分", labelEn: "Grading", hint: "成績分布", color: "var(--rate-grading)", higherIsBetter: true },
+  { key: "sweetness", label: "甜度", labelEn: "Sweetness", hint: "給分甜不甜", color: "var(--accent)", higherIsBetter: true },
+  { key: "coolness", label: "涼度", labelEn: "Coolness", hint: "課程輕不輕鬆", color: "var(--accent)", higherIsBetter: true },
+  { key: "quality", label: "收穫", labelEn: "Takeaway", hint: "學到多少、內容紮實度", color: "var(--accent)", higherIsBetter: true },
 ] as const;
 
 export type RatingDimensionKey = (typeof RATING_DIMENSIONS)[number]["key"];

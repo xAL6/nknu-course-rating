@@ -5,6 +5,7 @@ import { z } from "zod";
 import { generateText } from "ai";
 import { deepseek } from "@ai-sdk/deepseek";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getReviews } from "@/lib/data/reviews";
 import {
   isAllowedEmail,
@@ -43,10 +44,7 @@ const reviewSchema = z.object({
   semesterId: z.string().optional(),
   sweetness: z.coerce.number().int().min(1).max(5),
   coolness: z.coerce.number().int().min(1).max(5),
-  loading: z.coerce.number().int().min(1).max(5),
   quality: z.coerce.number().int().min(1).max(5),
-  grading: z.coerce.number().int().min(1).max(5),
-  shortComment: z.string().max(100).optional(),
   body: z.string().max(5000).optional(),
 });
 
@@ -74,10 +72,7 @@ export async function submitReview(formData: FormData) {
       semester_id: input.semesterId ?? course.semester_id,
       sweetness: input.sweetness,
       coolness: input.coolness,
-      loading: input.loading,
       quality: input.quality,
-      grading: input.grading,
-      short_comment: input.shortComment || null,
       body: input.body || null,
       tags,
       display_name: displayName,
@@ -98,22 +93,61 @@ export async function submitReview(formData: FormData) {
   return { ok: true };
 }
 
-export async function toggleBookmark(courseId: string, courseKey: string) {
-  const { supabase, user } = await requireUser();
-  const { data: existing } = await supabase
-    .from("bookmarks")
-    .select("course_id")
-    .eq("user_id", user.id)
-    .eq("course_id", courseId)
-    .maybeSingle();
+const MIME_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
 
-  if (existing) {
-    await supabase.from("bookmarks").delete().eq("user_id", user.id).eq("course_id", courseId);
-  } else {
-    await supabase.from("bookmarks").insert({ user_id: user.id, course_id: courseId });
+/**
+ * Update the signed-in user's profile: display name and (optional) avatar.
+ * Avatar is uploaded with the service-role client to avatars/<uid>/… (bucket is
+ * public-read). The new name is also snapshotted onto the user's past reviews
+ * and comments so it stays consistent.
+ */
+export async function updateProfile(formData: FormData) {
+  const { user } = await requireUser();
+  const admin = createAdminClient();
+
+  const name = String(formData.get("displayName") ?? "").trim();
+  if (name.length < 1 || name.length > 20) throw new Error("INVALID_NAME");
+
+  const patch: { display_name: string; avatar_url?: string | null } = { display_name: name };
+
+  // remove old files in this user's folder (on replace or explicit removal)
+  async function clearFolder() {
+    const { data: list } = await admin.storage.from("avatars").list(user.id);
+    if (list?.length) await admin.storage.from("avatars").remove(list.map((f) => `${user.id}/${f.name}`));
   }
-  revalidatePath(`/course/${courseKey}`);
-  return { bookmarked: !existing };
+
+  const file = formData.get("avatar");
+  if (file instanceof File && file.size > 0) {
+    if (file.size > 2_097_152) throw new Error("FILE_TOO_LARGE");
+    const ext = MIME_EXT[file.type];
+    if (!ext) throw new Error("BAD_FILE_TYPE");
+    await clearFolder();
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const buf = await file.arrayBuffer();
+    const { error: upErr } = await admin.storage
+      .from("avatars")
+      .upload(path, buf, { contentType: file.type, upsert: true });
+    if (upErr) throw new Error("UPLOAD_FAILED");
+    patch.avatar_url = admin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  } else if (formData.get("removeAvatar") === "1") {
+    await clearFolder();
+    patch.avatar_url = null;
+  }
+
+  const { error } = await admin.from("profiles").update(patch).eq("user_id", user.id);
+  if (error) throw error;
+
+  // Keep the snapshotted name consistent on existing UGC.
+  await admin.from("reviews").update({ display_name: name }).eq("user_id", user.id);
+  await admin.from("comments").update({ display_name: name }).eq("user_id", user.id);
+
+  revalidatePath("/me");
+  return { ok: true, displayName: name, avatarUrl: patch.avatar_url ?? null };
 }
 
 const voteKind = z.enum(["like", "useful", "not_useful"]);
@@ -240,11 +274,11 @@ export async function getReviewSummary(
   });
 
   const { text } = await generateText({
-    model: deepseek("deepseek-chat"),
+    model: deepseek(process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"),
     system:
       "你是課程評價摘要助手。根據學生對某位老師某門課的真實評價，寫出客觀、精簡的繁體中文摘要。" +
       "不可捏造未提及的資訊。輸出格式：先一句總結，接著「優點」與「注意」兩個 Markdown 條列（各 2–4 點）。",
-    prompt: `評分面向 1–5（甜度=給分甜、涼度=輕鬆、負擔=作業考試多、品質=內容紮實、給分）。\n以下是 ${reviews.length} 則評價：\n${lines.join("\n")}`,
+    prompt: `評分面向 1–5（甜度=給分甜、涼度=輕鬆、收穫=學到多少/內容紮實）。\n以下是 ${reviews.length} 則評價：\n${lines.join("\n")}`,
   });
 
   await supabase

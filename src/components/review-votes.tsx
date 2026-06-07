@@ -31,18 +31,18 @@ export function ReviewVotes({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2">
       <button
         onClick={() => vote("like")}
         disabled={pending}
-        className="flex items-center gap-1 rounded-full border border-hairline px-2.5 py-1 text-xs text-body transition-colors hover:bg-secondary disabled:opacity-50"
+        className="flex items-center gap-1 whitespace-nowrap rounded-full border border-hairline px-2.5 py-1 text-xs text-body transition-colors hover:bg-secondary disabled:opacity-50"
       >
         <ThumbsUp className="size-3" /> {counts.like}
       </button>
       <button
         onClick={() => vote("useful")}
         disabled={pending}
-        className="flex items-center gap-1 rounded-full border border-hairline px-2.5 py-1 text-xs text-body transition-colors hover:bg-secondary disabled:opacity-50"
+        className="flex items-center gap-1 whitespace-nowrap rounded-full border border-hairline px-2.5 py-1 text-xs text-body transition-colors hover:bg-secondary disabled:opacity-50"
       >
         <Sparkle className="size-3" /> 實用 {counts.useful}
       </button>

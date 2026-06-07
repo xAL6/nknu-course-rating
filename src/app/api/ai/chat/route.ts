@@ -20,7 +20,7 @@ const SYSTEM = `你是「高師大選課助手」，協助高雄師範大學的�
   · compareTeachers — 比較「同一門課的不同授課老師」，傳入課名。
   · getCourseDetail — 深入單一課程（評分、標籤分布、歷年搶課熱度、短評），courseKey 取自其他工具回傳值。
   · buildSchedule — 自動排出一份「不衝堂」的建議課表。把使用者說的空堂日轉成 freeWeekdays（1=週一…7=週日，例如「週五沒課」→[5]），系所名稱放 department；可帶 targetCredits、tags、prefer（sweet/easy/quality）。回傳的是一個「可行建議」，要提醒可再自行調整，不可捏造未回傳的課；若回傳 error，請把 message 轉達給學生。
-- 評分面向：甜度(給分甜)、涼度(輕鬆)、負擔(作業考試多寡)、品質(內容紮實)、給分。分數 1–5。
+- 評分面向：甜度(給分甜)、涼度(輕鬆)、收穫(學到多少/內容紮實)。分數 1–5。
 - 工具回傳的 tags 是同學標記的「快速標籤」與其次數（例如 {"可加簽":12,"會點名":8}），代表點名/加簽/考試/作業/授課形式等事實面向。可引用標籤與次數佐證（例如「12 人標『可加簽』」），不可捏造未出現的標籤。
 - enrollFillRate 是「選課人數 / 名額」比例：越接近或超過 1 代表越搶手、越難選上；可用來回答「選上機率／好不好搶」。
 - 若課程「尚無評價」(reviewCount 為 0)，要誠實說明目前沒有評價資料，只能依課名/教師/學分提供參考。
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: deepseek("deepseek-chat"),
+    model: deepseek(process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"),
     system: SYSTEM,
     messages: await convertToModelMessages(messages),
     stopWhen: stepCountIs(6),
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
           prefer: z
             .enum(["sweet", "easy", "quality"])
             .optional()
-            .describe("排序偏好：sweet=甜、easy=涼/輕鬆、quality=品質"),
+            .describe("排序偏好：sweet=甜、easy=涼/輕鬆、quality=收穫"),
           avoidCrossCampus: z.boolean().optional().describe("是否避開跨校區緊接，預設 true"),
         }),
         execute: async (args) => buildScheduleForAI(args),

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,16 +19,28 @@ import { createClient } from "@/lib/supabase/client";
 export function NavAuth() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<{ name: string; avatar: string | null } | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
+    async function loadProfile(uid: string) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, avatar_url")
+        .eq("user_id", uid)
+        .maybeSingle();
+      if (data) setProfile({ name: data.display_name as string, avatar: (data.avatar_url as string | null) ?? null });
+    }
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user ?? null);
+      if (data.user) loadProfile(data.user.id);
       setReady(true);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) loadProfile(session.user.id);
+      else setProfile(null);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -43,7 +55,7 @@ export function NavAuth() {
     );
   }
 
-  const name = (user.user_metadata?.display_name as string) || "我";
+  const name = profile?.name || "我";
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -58,7 +70,12 @@ export function NavAuth() {
         }
       >
         <Avatar className="size-8">
-          <AvatarFallback>{name.slice(0, 1)}</AvatarFallback>
+          {profile?.avatar && <AvatarImage src={profile.avatar} alt="" />}
+          <AvatarFallback
+            style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}
+          >
+            {name.slice(0, 1)}
+          </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
