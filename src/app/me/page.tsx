@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProfileSettings } from "@/components/profile-settings";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { SEMESTER_TERMS } from "@/lib/config";
 
 export const metadata = { title: "個人頁面" };
 
-export default async function MePage() {
+export default async function MePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string }>;
+}) {
+  const { welcome } = await searchParams;
   const user = await getCurrentUser();
   if (!user) {
     return (
@@ -35,9 +41,13 @@ export default async function MePage() {
 
   return (
     <div className="mx-auto max-w-[900px] px-6 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">{user.displayName}</h1>
+      <ProfileSettings
+        displayName={user.displayName}
+        avatarUrl={user.avatarUrl}
+        welcome={welcome === "1"}
+      />
       {!user.allowed && (
-        <p className="mt-1 text-sm text-warning-deep">此帳號非高師大信箱,無法撰寫評價。</p>
+        <p className="mt-3 text-sm text-warning-deep">此帳號非高師大信箱,無法撰寫評價。</p>
       )}
 
       <section className="mt-8">

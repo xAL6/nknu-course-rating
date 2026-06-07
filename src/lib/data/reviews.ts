@@ -13,6 +13,7 @@ export type Comment = {
 export type Review = {
   id: string;
   displayName: string;
+  avatarUrl: string | null;
   semesterId: string | null;
   teacherKey: string;
   sweetness: number | null;
@@ -37,7 +38,7 @@ export async function getReviews(courseKey: string): Promise<Review[]> {
   const { data } = await supabase
     .from("reviews")
     .select(
-      "*, courses!inner(course_key, teacher_key), comments(id, body, display_name, created_at)",
+      "*, courses!inner(course_key, teacher_key), profiles(avatar_url), comments(id, body, display_name, created_at)",
     )
     .eq("courses.course_key", courseKey)
     .order("created_at", { ascending: false });
@@ -45,6 +46,7 @@ export async function getReviews(courseKey: string): Promise<Review[]> {
   return (data ?? []).map((r) => ({
     id: r.id,
     displayName: r.display_name,
+    avatarUrl: (r.profiles as unknown as { avatar_url: string | null } | null)?.avatar_url ?? null,
     semesterId: r.semester_id,
     teacherKey: (r.courses as unknown as { teacher_key: string } | null)?.teacher_key ?? "",
     sweetness: r.sweetness,
