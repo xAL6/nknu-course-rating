@@ -279,7 +279,7 @@ export async function POST(req: Request) {
         description:
           "依『星期＋時段』找課，回答「週X早上/下午/晚上有哪些課（涼/甜的）」這類問題。weekday 1=週一…7=週日；timeOfDay morning(1–4節)/afternoon(5–10節)/evening(A–D節)。可選 department、prefer 排序。",
         inputSchema: z.object({
-          weekday: z.number().int().min(1).max(7).describe("星期：1=週一…7=週日"),
+          weekday: z.number().int().min(1).max(7).optional().describe("星期：1=週一…7=週日；省略=不限星期（如『早上的課』掃全週）"),
           timeOfDay: z.enum(["morning", "afternoon", "evening"]).optional().describe("時段：早上/下午/晚上"),
           department: z.string().optional().describe("系所名稱（可選，縮小範圍）"),
           prefer: z.enum(["sweet", "cool", "takeaway"]).optional().describe("排序偏好，預設 cool（涼）"),
