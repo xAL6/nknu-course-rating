@@ -47,6 +47,50 @@ export async function getDepartmentNames(limit = 36): Promise<{ code: string; na
     .filter((d) => d.name && !/占用|未定|nan/i.test(d.name));
 }
 
+export type RecentReview = {
+  courseKey: string;
+  teacherKey: string;
+  name: string;
+  teacher: string;
+  displayName: string;
+  body: string;
+  sweetness: number | null;
+  coolness: number | null;
+  quality: number | null;
+  createdAt: string;
+};
+
+/** Latest reviews that have a written 心得 — for the homepage review ticker. */
+export async function getRecentReviews(limit = 16): Promise<RecentReview[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reviews")
+    .select(
+      "display_name, body, sweetness, coolness, quality, created_at, courses!inner(name, course_key, teacher_key)",
+    )
+    .not("body", "is", null)
+    .neq("body", "")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((r) => {
+    const c = r.courses as unknown as { name: string; course_key: string; teacher_key: string | null } | null;
+    const tk = c?.teacher_key ?? "";
+    return {
+      courseKey: c?.course_key ?? "",
+      teacherKey: tk,
+      name: c?.name ?? "",
+      teacher: tk ? tk.split("、")[0] : "",
+      displayName: r.display_name as string,
+      body: r.body as string,
+      sweetness: r.sweetness as number | null,
+      coolness: r.coolness as number | null,
+      quality: r.quality as number | null,
+      createdAt: r.created_at as string,
+    };
+  });
+}
+
 export async function getTopContributors(limit = 50): Promise<Contributor[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();

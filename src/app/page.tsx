@@ -5,9 +5,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/reveal";
 import { CountUp } from "@/components/count-up";
-import { Marquee } from "@/components/marquee";
+import { ReviewMarquee } from "@/components/review-marquee";
 import { SITE_TAGLINE } from "@/lib/config";
-import { getHomeStats, getTrendingCourses, getDepartmentNames } from "@/lib/data/community";
+import { getHomeStats, getTrendingCourses, getRecentReviews } from "@/lib/data/community";
 
 const RATE = [
   { label: "甜度", v: 86, c: "var(--rate-sweet)" },
@@ -16,15 +16,11 @@ const RATE = [
 ];
 
 export default async function Home() {
-  const [stats, trending, depts] = await Promise.all([
+  const [stats, trending, recentReviews] = await Promise.all([
     getHomeStats(),
     getTrendingCourses(6),
-    getDepartmentNames(36),
+    getRecentReviews(16),
   ]);
-  const marquee = depts.map((d) => ({
-    label: d.name,
-    href: `/courses?dept=${encodeURIComponent(d.code)}`,
-  }));
 
   return (
     <>
@@ -126,10 +122,11 @@ export default async function Home() {
           </Reveal>
         </div>
 
-        {/* department marquee */}
-        {marquee.length > 0 && (
+        {/* live review ticker */}
+        {recentReviews.length >= 3 && (
           <div className="relative mx-auto max-w-[1400px] px-6 pb-14">
-            <Marquee items={marquee} />
+            <p className="mb-3 px-1 text-xs font-medium tracking-wide text-mute">學長姐怎麼說</p>
+            <ReviewMarquee reviews={recentReviews} />
           </div>
         )}
       </section>
