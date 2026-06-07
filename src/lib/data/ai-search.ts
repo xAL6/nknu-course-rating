@@ -1,9 +1,11 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { listCourses, getCourse } from "./courses";
+import { listCourses, getCourse, latestSemester } from "./courses";
 import { getReviews } from "./reviews";
 import { fillRate, avgFillRate } from "@/lib/enrollment";
-import type { CourseGroup } from "./types";
+import { buildSchedule } from "@/lib/schedule-builder";
+import { PERIOD_ORDER } from "@/lib/period-shared";
+import type { CourseGroup, Slot } from "./types";
 
 export type AiRating = {
   reviewCount: number;
@@ -189,4 +191,125 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
     reviewCount: s?.rating?.reviewCount ?? reviews.length,
     sampleComments,
   };
+}
+
+export type ScheduleCourse = {
+  courseKey: string;
+  courseCode: string;
+  syllabusNo: string | null;
+  name: string;
+  teachers: string[];
+  classroom: string | null;
+  campus: string | null;
+  semesterId: string;
+  slots: Slot[];
+  credits: number | null;
+  rating: AiRating | null;
+  tags: Record<string, number>;
+};
+
+export type ScheduleResult =
+  | { kind: "schedule"; semester: string; totalCredits: number; courses: ScheduleCourse[]; note: string }
+  | { error: string; message: string };
+
+/**
+ * Auto-build a conflict-free suggested timetable for one semester, honouring
+ * free days, a credit target, tag/rating preferences, and (default) avoiding
+ * back-to-back cross-campus classes. The combinatorial search runs in code
+ * (schedule-builder) — the model only relays/explains the result.
+ */
+export async function buildScheduleForAI(args: {
+  department?: string;
+  semester?: string;
+  freeWeekdays?: number[];
+  targetCredits?: number;
+  tags?: string[];
+  prefer?: "sweet" | "easy" | "quality";
+  avoidCrossCampus?: boolean;
+}): Promise<ScheduleResult> {
+  const semester = args.semester ?? (await latestSemester());
+  if (!semester) return { error: "NO_SEMESTER", message: "目前沒有可用的學期資料。" };
+
+  const supabase = await createClient();
+
+  // Resolve a department name keyword to its code (keeps the candidate pool small).
+  let deptCode: string | undefined;
+  if (args.department) {
+    const { data } = await supabase.rpc("facet_departments", {
+      p_sem: semester,
+      p_level: null,
+      p_dn: null,
+      p_campus: null,
+    });
+    const facets = (data ?? []) as { code: string; name: string }[];
+    const kw = args.department.replace(/系所$|學系$|系$/u, "").trim();
+    const hit =
+      facets.find((f) => f.name === args.department) ??
+      facets.find((f) => f.name.includes(kw) || (kw.length > 0 && kw.includes(f.name)));
+    deptCode = hit?.code;
+    if (!deptCode)
+      return {
+        error: "DEPT_NOT_FOUND",
+        message: `找不到系所「${args.department}」，請確認名稱（可參考課程列表的系所名稱）。`,
+      };
+  }
+
+  const list = await listCourses({ semester, dept: deptCode, pageSize: 300 });
+  const sums = await fetchSummaries(list.items.map((c) => c.courseKey).filter(Boolean));
+
+  const tags = args.tags?.filter(Boolean) ?? [];
+  const prefDim: keyof AiRating =
+    args.prefer === "sweet" ? "sweetness" : args.prefer === "easy" ? "coolness" : "quality";
+
+  const candidates = list.items
+    .map((c) => {
+      const o = c.offerings[0];
+      if (!o) return null;
+      const s = sums.get(c.courseKey);
+      const rating = s?.rating ?? null;
+      const tagCounts = s?.tags ?? {};
+      const prefVal = (rating?.[prefDim] as number | null) ?? 0;
+      const tagBonus = tags.reduce((n, t) => n + ((tagCounts[t] ?? 0) > 0 ? 3 : 0), 0);
+      const reviewBonus = Math.min(rating?.reviewCount ?? 0, 5) * 0.1;
+      const loadPenalty =
+        args.prefer === "easy" && rating?.loading != null ? (5 - rating.loading) * 0.2 : 0;
+      return {
+        courseKey: c.courseKey,
+        courseCode: c.courseCode,
+        syllabusNo: o.syllabusNo,
+        name: c.name,
+        teachers: o.teachers.length ? o.teachers : c.teachers,
+        classroom: o.classroom,
+        campus: o.campus ?? null,
+        semesterId: o.semesterId,
+        slots: o.slots,
+        credits: c.credits,
+        rating,
+        tags: tagCounts,
+        score: prefVal + tagBonus + reviewBonus + loadPenalty,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null);
+
+  const { chosen, totalCredits } = buildSchedule(candidates, {
+    freeWeekdays: args.freeWeekdays,
+    targetCredits: args.targetCredits,
+    avoidCrossCampus: args.avoidCrossCampus,
+    periodOrder: PERIOD_ORDER,
+  });
+
+  const courses: ScheduleCourse[] = chosen.map(({ score, ...rest }) => {
+    void score;
+    return rest;
+  });
+
+  const target = args.targetCredits ?? 15;
+  const note =
+    courses.length === 0
+      ? "找不到符合條件的課（可能空堂日限制太嚴，或該系所可排的課太少）。可放寬條件再試。"
+      : totalCredits < target
+        ? `這是一個可行組合，但只湊到 ${totalCredits} 學分（候選課有限）。可放寬條件或自行增減。`
+        : "這是一個可行的建議組合，你可以再自行調整。";
+
+  return { kind: "schedule", semester, totalCredits, courses, note };
 }
