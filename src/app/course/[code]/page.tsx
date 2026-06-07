@@ -38,6 +38,9 @@ const semLabel = (id: string) => {
   return `${y} ${SEMESTER_TERMS[t] ?? t}`;
 };
 
+// ISO timestamp -> 2025/03/14 (deterministic; avoids server/client locale drift)
+const fmtDate = (iso: string) => iso.slice(0, 10).replace(/-/g, "/");
+
 export default async function CoursePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const courseKey = decodeURIComponent(code);
@@ -203,9 +206,11 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                               </span>
                               <div className="leading-tight">
                                 <div className="text-sm font-medium text-ink">{r.displayName}</div>
-                                {r.semesterId && (
-                                  <div className="font-mono text-xs text-mute">{semLabel(r.semesterId)} 修課</div>
-                                )}
+                                <div className="font-mono text-xs text-mute">
+                                  {r.semesterId && `${semLabel(r.semesterId)} 修課`}
+                                  {r.semesterId && " · "}
+                                  {fmtDate(r.createdAt)} 發表
+                                </div>
                               </div>
                             </div>
                             <ReviewVotes reviewId={r.id} courseKey={course.courseKey} likeCount={r.likeCount} usefulCount={r.usefulCount} />
