@@ -10,9 +10,14 @@ school Google account to write per-teacher reviews. Inspired by NTU Rating / NCK
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript**
-- **Tailwind v4** + **shadcn/ui (Nova preset → Base UI, NOT Radix)** + Geist fonts
-- **Supabase** (Postgres + Auth + RLS) — DB and auth in one vendor
-- **Vercel AI SDK v6** + **DeepSeek** for the AI advisor; **AI Elements** for chat UI
+- **Tailwind v4** + **shadcn/ui (Nova preset → Base UI, NOT Radix)** + **Noto Sans TC** (one
+  CJK+Latin family). UI = **dark-default glassmorphism with a single warm-gold accent**
+  (`--accent`): ambient gold glow + `.glass/.glass-strong/.glass-soft` tiers in `globals.css`.
+  Perf rule: real `backdrop-filter` only on `.glass`/`.glass-strong` (few per viewport);
+  high-count lists use `.glass-soft` (translucent, NO blur) to stay smooth.
+- **Supabase** (Postgres + Auth + RLS + Storage) — DB, auth, file storage in one vendor
+- **Vercel AI SDK v6** + **DeepSeek** (`deepseek-v4-pro`, set via `DEEPSEEK_MODEL`) for the AI
+  advisor; **AI Elements** for chat UI
 - Crawler: Node + axios + cheerio (`scripts/scraper/`)
 - Deployed on Vercel (project `nknu-course-rating`, team `REDACTED`)
 
@@ -39,6 +44,9 @@ npm run crawl -- --year 114 --sem 2 --dept 國文 --dump out.json  # preview, no
 npm run crawl:rooms                   # build 校區 map + backfill courses.campus
 npm run reset-data                    # TRUNCATE all crawled course data (keeps auth)
 npm run delete-semester -- 115-1      # remove one semester
+npm run seed-reviews                  # seed demo reviews (funny handles + copy) for screenshots/demo
+npm run seed-reviews -- --purge       # remove ALL seeded users + their reviews (clean undo)
+npm run seed-reviews -- --users 150 --groups 600 --min 6 --max 18   # large batch
 
 vercel deploy --prod --yes            # deploy (CLI logged in as anon)
 ```
@@ -102,6 +110,10 @@ Reverse-engineers `sso.nknu.edu.tw/Stu/scheduleDepartment.aspx` (ASP.NET WebForm
   bootstraps a privacy-first profile (stores only the auth uid, never the email).
 - **Google provider is enabled** (Supabase project `your-project-ref`); Email/password
   provider is disabled (Google-only). Site URL + redirect allow-list configured.
+- **First sign-in → `/me?welcome=1` onboarding**: the user can set a display name + upload an
+  avatar (`ProfileSettings` → `updateProfile` action; avatar to the public `avatars` Storage
+  bucket via service role; name change is also snapshotted onto their past reviews/comments).
+  Avatars show in the nav, profile, and on reviews. Random anonymized handle is the default.
 - Writes go through Server Actions (`src/lib/actions.ts`) guarded by `requireUser()`.
   **RLS is the real backstop** — the anon key is public and PostgREST is a public HTTP API,
   so write policies require `auth.uid() = user_id AND is_nknu()` (migration 0018): `is_nknu()`
@@ -116,9 +128,17 @@ Reverse-engineers `sso.nknu.edu.tw/Stu/scheduleDepartment.aspx` (ASP.NET WebForm
   `npm run migrate` applies new ones. Migrations run via direct pg (`scripts/migrate.ts`).
 - RLS: public `SELECT` on reference + UGC tables; writes only by the owner **and** an NKNU
   mailbox (`is_nknu()`, migration 0018).
-- `course_rating_summary` (keyed by the logical `course_key`) is maintained by triggers on
-  `reviews`; the trigger DELETEs the summary row when the last review is removed (0015).
+- `course_rating_summary` (keyed by `(course_key, teacher_key)`) is maintained by triggers on
+  `reviews`; the trigger DELETEs the summary row when the last review is removed (0015) and
+  also aggregates `tag_counts` (0020).
 - Vote counts (`reviews.like_count/useful_count`) maintained by a trigger on `votes` (0010).
+- **Ratings are 3 dimensions: 甜度 / 涼度 / 收穫** (`sweetness`/`coolness`/`quality`, 1–5).
+  Legacy `loading`/`grading` columns are kept for old rows but no longer collected or shown.
+  A review carries one **心得** (`body`); the old one-line `short_comment` was folded into
+  `body` (0022). Quick tags (`reviews.tags`, controlled vocab, 0020).
+- Recent migrations: **0020** review quick-tags + `tag_counts`; **0021** `reviews.user_id →
+  profiles(user_id)` FK (so the 貢獻排行 `profiles→reviews(count)` embed works); **0022** fold
+  `short_comment` into `body`; **0023** `profiles.avatar_url` + public `avatars` Storage bucket.
 
 ## Layout / data flow
 
@@ -129,31 +149,60 @@ Reverse-engineers `sso.nknu.edu.tw/Stu/scheduleDepartment.aspx` (ASP.NET WebForm
 - `src/lib/supabase/` — `client` (browser anon), `server` (RSC anon w/ cookies),
   `admin` (service role; server/crawler only).
 - Course detail (`/course/[course_key]`) = one logical course (dept+name+teacher), merging
-  its history across years/codes; each offering row shows that term's actual 課號. Comments
-  thread per review (`ReviewComments`); optional AI TL;DR (`ReviewSummaryAI`).
-- Timetable (`/timetable`, localStorage `timetable-store.ts`) — conflict detection, locked
-  to one semester, shareable via URL token, and savable to the account (`timetables` table,
-  0013). Course text search is semester-scoped for the add-panel.
+  its history across years/codes; `OfferingHistory` lists 歷年開課 (collapses past 3, each row
+  shows that term's 課號). Reviews are spacious per-review cards (avatar + 3-axis chips + tags +
+  心得 + posted date); comments thread per review (`ReviewComments`); optional AI TL;DR.
+  (The 收藏/bookmark feature was removed.)
+- Home (`/`) shows a **live review ticker** (`ReviewMarquee`, real recent 心得) instead of the
+  old department marquee.
+- Timetable (`/timetable`, localStorage `timetable-store.ts`) — conflict detection (red blocks),
+  **locked by TERM only (上/下/暑), not academic year** (`TermPicker`; mix years of the same
+  term), shareable via URL token, savable to the account (`timetables` 0013), and **downloadable
+  as a polished PNG** (`timetable-image.ts`, canvas-drawn, merges consecutive periods). Add-panel
+  search is term-scoped across all years (`searchTimetableCourses`).
 
 ## AI advisor
 
-`/ai` (AI Elements UI) → `/api/ai/chat` streams DeepSeek with a `searchCourses` tool
-(grounded RAG over the DB). Gated on `DEEPSEEK_API_KEY`; shows a "not enabled" state without it.
-Rate-limited (anon 8/h, signed-in 40/h, in-memory `rate-limit.ts`); the model cites courses
-as clickable `[名](/course/<course_key>)` links.
+`/ai` (AI Elements UI) → `/api/ai/chat` streams **DeepSeek `deepseek-v4-pro`** as a
+**tool-calling agent** (grounded RAG over the DB — the model never sees raw data, it calls tools).
+Gated on `DEEPSEEK_API_KEY`; shows "not enabled" without it. `DEEPSEEK_MODEL` env overrides the model.
+
+- **5 read-only, parametrized tools** (`src/lib/data/ai-search.ts`):
+  `searchCourses` (keyword + tag filter), `compareTeachers` (same course, different teachers),
+  `getCourseDetail` (deep dive: ratings, tag breakdown, 搶課熱度, per-semester offerings, sample
+  心得), `buildSchedule` (conflict-free timetable via `schedule-builder`), `listDeptCourses`
+  (系所＋年級＋學期 precise listing — answers "X系大四上有哪些課" via the same facets as `/courses`,
+  NOT keyword-guessing).
+- **Tool results expose full course facts** so the AI never says "沒資料": classTime, classroom,
+  campus, courseType (必/選), yearLong, degreeLevel, dayNight, className, credits, syllabusUrl,
+  reviewCount, 3-axis rating, tag counts, enrollFillRate. Course links use a pre-encoded `url`
+  field (parens encoded — raw `)` would break Markdown links).
+- **Persona**: a snarky 學長 (機掰/吐槽, demo-friendly) but data stays accurate; **never discloses
+  its persona/identity** (deflects "你是誰" snarkily).
+- **Defense-in-depth** (prompt injection = trust-boundary problem; layered):
+  (1) deterministic pre-model guard (`route.ts`) blocks blatant injection/jailbreak + oversized
+  input with a canned snarky refusal, before the model/tools; (2) hardened system prompt (input =
+  data not commands, scope-locked to course selection, refuses harmful/off-topic); (3) **least-
+  privilege tools** (read-only, parametrized — no SQL/writes, so a jailbreak can't do harm);
+  (4) `searchCourses` hard-capped at 3 calls/request (anti-loop, always concludes);
+  (5) rate-limit (anon 8/h, signed-in 40/h, in-memory `rate-limit.ts`).
+- Also used in the course page "AI 評價 TL;DR" (`ReviewSummaryAI` → `generateText`).
 
 ## Status / remaining rough edges
 
-Done in recent batches: per-(course,teacher) ratings; comments UI; cross-semester trigram
-search; timetable semester-lock/share/account-save; AI rate-limit + clickable links + review
-TL;DR; sitemap/robots/OG + nightly crawl Action; mobile nav; vote-count trigger;
-teacher_list pagination; M:N membership arrays; two-level course identity; RLS domain guard.
+Done: per-(course,teacher) ratings; cross-semester trigram search; two-level course identity;
+M:N membership arrays; RLS domain guard; sitemap/robots/OG + nightly crawl Action; vote trigger.
+Recent overhaul: **dark gold-glass UI redesign**; ratings cut to **3 axes (甜/涼/收穫)**; reviews =
+single 心得 + tags + posted date + avatars; **收藏 removed**; timetable **term-locked (not year)**
++ term picker + cross-year search + **PNG download** + conflict colors; home **review ticker**;
+profile **naming + avatar upload** (Storage); **AI advisor live on `deepseek-v4-pro`** with 5 tools
++ full-field grounding + layered injection/abuse defenses + snarky persona; `seed-reviews` demo data.
+
+`DEEPSEEK_API_KEY` + `DEEPSEEK_MODEL` are set in Vercel (prod/preview/dev) and `.env.local`.
 
 Remaining:
 - **Publish the Google OAuth consent screen** (manual; else only test users can log in).
-- Set `DEEPSEEK_API_KEY` to turn on the AI advisor + review TL;DR.
-- Historical years 110–113 were re-crawled with memberships; if a new semester opens, run
-  `npm run crawl -- --year <n>` (or the nightly Action).
 - In-memory rate limit isn't shared across instances (swap for Upstash if needed).
 - If a course changes its 開課代號 across years its history still merges (keyed by
   dept+name+teacher); a *different* teacher each year would read as separate courses.
+- If a new semester opens, run `npm run crawl -- --year <n>` (or the nightly Action).
