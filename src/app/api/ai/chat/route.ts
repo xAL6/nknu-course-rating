@@ -16,7 +16,7 @@ const SYSTEM = `你是「高師大選課助手」，協助高雄師範大學的�
 規則：
 - 只能根據工具回傳的真實課程資料回答，不可捏造課程、教師、評分或標籤。
 - 先選對工具再回答：
-  · searchCourses — 依關鍵字找課；可用 tags 篩選（例如只看「不點名」「可加簽」的課）。
+  · searchCourses — 依關鍵字找課；可用 tags 篩選（例如只看「不點名」「好加簽」的課）。tags 僅能用這些值：會點名/不點名/點名抽人/好加簽/難加簽/不考試/重期末/有期中考/重報告/作業偏多/需分組/佛心給分/容易被當/全英授課/遠距居多。
   · compareTeachers — 比較「同一門課的不同授課老師」，傳入課名。
   · getCourseDetail — 深入單一課程（評分、標籤分布、歷年搶課熱度、短評），courseKey 取自其他工具回傳值。
   · buildSchedule — 自動排出一份「不衝堂」的建議課表。把使用者說的空堂日轉成 freeWeekdays（1=週一…7=週日，例如「週五沒課」→[5]），系所名稱放 department；可帶 targetCredits、tags、prefer（sweet/easy/quality）。回傳的是一個「可行建議」，要提醒可再自行調整，不可捏造未回傳的課；若回傳 error，請把 message 轉達給學生。
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
           tags: z
             .array(z.string())
             .optional()
-            .describe('只回傳同時帶有這些快速標籤的課，例如 ["不點名","可加簽"]'),
+            .describe('只回傳同時帶有這些快速標籤的課，例如 ["不點名","好加簽"]'),
         }),
         execute: async ({ query, department, tags }) => {
           const courses = await retrieveCourses(query, department, { tags });
