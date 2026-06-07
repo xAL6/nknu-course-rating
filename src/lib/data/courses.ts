@@ -146,17 +146,18 @@ const LEVEL_FACETS: Facet[] = DEGREE_LEVELS.map((l) => ({ code: l.code, name: l.
 
 /** The most recent semester id (e.g. "114-1"), or null if unconfigured/empty. */
 export async function latestSemester(): Promise<string | null> {
+  // Prefer the latest MAIN term (1/2). The summer term (`-3`) sorts highest but
+  // has only a handful of courses, so it's a bad default for search/browse.
+  const pickMain = (ids: string[]) => ids.find((id) => !id.endsWith("-3")) ?? ids[0] ?? null;
   if (!isSupabaseConfigured()) {
-    return [...FIXTURE.map((o) => o.semesterId)].sort((a, b) => b.localeCompare(a))[0] ?? null;
+    return pickMain([...FIXTURE.map((o) => o.semesterId)].sort((a, b) => b.localeCompare(a)));
   }
   const supabase = await createClient();
   const { data } = await supabase
     .from("semesters")
     .select("id")
-    .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data?.id as string) ?? null;
+    .order("id", { ascending: false });
+  return pickMain((data ?? []).map((s) => s.id as string));
 }
 
 export async function listCourses(params: CourseListParams): Promise<CourseListResult> {
