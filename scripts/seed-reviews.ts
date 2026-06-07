@@ -28,7 +28,14 @@ function arg(name: string, def: number): number {
   if (i >= 0 && process.argv[i + 1]) return Number(process.argv[i + 1]) || def;
   return def;
 }
+function strArg(name: string): string | undefined {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : undefined;
+}
 const PURGE = process.argv.includes("--purge");
+const REHANDLE = process.argv.includes("--rehandle");
+const POSITIVE = process.argv.includes("--positive");
+const DEPT = strArg("dept"); // filter target courses to a department (name keyword)
 const N_USERS = arg("users", 60);
 const N_GROUPS = arg("groups", 90);
 const MIN_PER = arg("min", 3);
@@ -51,16 +58,16 @@ function sampleN<T>(a: T[], n: number): T[] {
   return shuffle(a).slice(0, Math.min(n, a.length));
 }
 
-// ── funny anonymized handles (for demo) ──────────────────────────────────────
+// ── friendly + funny anonymized handles (for demo; relatable, not rude) ───────
 const H_PREFIX = [
-  "資深", "業餘", "菜逼八", "佛系", "硬派", "邊緣", "資優", "學店", "快樂", "崩潰",
-  "資淺", "全校最強", "傳說中的", "退休", "兼職",
+  "快樂", "佛系", "認真", "資深", "傳說中的", "熱血", "療癒系", "元氣", "低調", "資優",
+  "好學", "愛睡覺的", "咖啡因", "期末衝刺的", "陽光", "斜槓", "務實",
 ];
 const H_ROLE = [
-  "蹺課仔", "共筆王", "重修生", "早八鬥士", "加簽乞丐", "點名絕緣體", "報告製造機",
-  "停修候選人", "GPA保衛者", "涼課獵人", "死當邊緣人", "考古題信徒", "分組孤兒",
-  "通識亂修俠", "期末突擊隊", "微積分受害者", "第八節殭屍", "螢幕前的影子", "選課手刀王",
-  "凌晨交作業的人",
+  "共筆小天使", "早八戰士", "筆記控", "通識探險家", "咖啡續命人", "圖書館常客",
+  "週五解放軍", "學分收藏家", "報告救火隊", "小組長", "考前抱佛腳", "涼課鑑賞家",
+  "選課研究員", "GPA園丁", "程式碼詩人", "debug 苦行僧", "下課衝鋒隊", "螢幕另一端的人",
+  "宵夜同好會", "簡報藝術家",
 ];
 function makeHandles(n: number): string[] {
   const set = new Set<string>();
@@ -159,9 +166,13 @@ function tagsFor(p: { loading: number; grading: number; coolness: number; qualit
   return [...out].filter((t) => REVIEW_TAG_VALUES.includes(t)).slice(0, 5);
 }
 
-// per-(course,teacher) "true" profile; each review jitters around it
+// per-(course,teacher) "true" profile; each review jitters around it.
+// --positive skews the mix toward good/mid (no tough/mixed) for upbeat reviews.
 function courseProfile() {
-  const tier = pick(["good", "good", "mid", "mid", "mixed", "tough"] as const);
+  const tiers = POSITIVE
+    ? (["good", "good", "good", "mid"] as const)
+    : (["good", "good", "mid", "mid", "mixed", "tough"] as const);
+  const tier = pick(tiers);
   const base = {
     good: { quality: 4.4, coolness: 3.6, loading: 2.6, grading: 4.2, sweetness: 4.1 },
     mid: { quality: 3.4, coolness: 3.2, loading: 3.2, grading: 3.4, sweetness: 3.3 },
@@ -250,20 +261,45 @@ async function purge(sb: Sb) {
   console.log(`Cleared data for ${ids.length} seed users (auth rows removed: ${removed}).`);
 }
 
+// Rename ALL existing seed users to fresh friendly-funny handles (profiles +
+// snapshotted reviews/comments), without touching their reviews/ratings.
+async function rehandle(sb: Sb) {
+  const users = await listSeedUsers(sb);
+  const handles = makeHandles(users.length);
+  for (let i = 0; i < users.length; i++) {
+    const id = users[i].id;
+    const name = handles[i];
+    await sb.from("profiles").update({ display_name: name }).eq("user_id", id);
+    await sb.from("reviews").update({ display_name: name }).eq("user_id", id);
+    await sb.from("comments").update({ display_name: name }).eq("user_id", id);
+  }
+  console.log(`Re-handled ${users.length} seed users to friendly handles.`);
+}
+
 // ── course sampling ──────────────────────────────────────────────────────────
 type Offering = { id: string; course_key: string; teacher_key: string; name: string; semester_id: string | null };
 
 async function sampleGroups(sb: Sb, nGroups: number) {
+  // optional department filter: resolve name keyword → department code(s)
+  let deptCodes: string[] | null = null;
+  if (DEPT) {
+    const { data: depts } = await sb.from("departments").select("code, name").ilike("name", `%${DEPT}%`);
+    deptCodes = (depts ?? []).map((d) => d.code as string);
+    console.log(`Dept filter "${DEPT}" → codes:`, deptCodes.join(", ") || "(none)");
+    if (!deptCodes.length) throw new Error(`No department matches "${DEPT}"`);
+  }
   // pull recent offerings (latest semesters first) and group by (course_key, teacher_key)
   const rows: Offering[] = [];
-  for (let off = 0; off < 4000; off += 1000) {
-    const { data, error } = await sb
+  for (let off = 0; off < 6000; off += 1000) {
+    let q = sb
       .from("courses")
       .select("id, course_key, teacher_key, name, semester_id")
       .neq("teacher_key", "")
       .not("teacher_key", "is", null)
       .order("semester_id", { ascending: false })
       .range(off, off + 999);
+    if (deptCodes) q = q.in("department_code", deptCodes);
+    const { data, error } = await q;
     if (error) throw error;
     rows.push(...(data as Offering[]));
     if (!data || data.length < 1000) break;
@@ -282,6 +318,10 @@ async function main() {
 
   if (PURGE) {
     await purge(sb);
+    return;
+  }
+  if (REHANDLE) {
+    await rehandle(sb);
     return;
   }
 
