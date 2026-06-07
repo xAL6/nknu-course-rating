@@ -10,6 +10,8 @@ export type TimetableCourse = {
   name: string;
   teachers: string[];
   classroom: string | null;
+  /** Optional; the commute check derives it from `classroom` when absent. */
+  campus?: string | null;
   semesterId: string;
   slots: Slot[];
 };
