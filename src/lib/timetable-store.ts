@@ -72,14 +72,19 @@ export function timetableSemester(courses: TimetableCourse[]): string | null {
   return courses[0]?.semesterId ?? null;
 }
 
+/** The TERM (1/2/3) a timetable is locked to — year-agnostic — or null if empty. */
+export function timetableTerm(courses: TimetableCourse[]): string | null {
+  return courses[0]?.semesterId?.split("-")[1] ?? null;
+}
+
 export function addToTimetable(course: TimetableCourse): AddResult {
   const cur = read();
   if (cur.some((c) => c.syllabusNo === course.syllabusNo && c.courseCode === course.courseCode)) {
     return { ok: false, reason: "duplicate" };
   }
-  // A timetable is scoped to one semester; reject cross-semester adds.
-  const sem = timetableSemester(cur);
-  if (sem && course.semesterId !== sem) return { ok: false, reason: "semester" };
+  // A timetable is scoped to one TERM (上/下/暑), but may mix academic years.
+  const term = timetableTerm(cur);
+  if (term && course.semesterId.split("-")[1] !== term) return { ok: false, reason: "semester" };
   write([...cur, course]);
   return { ok: true };
 }
