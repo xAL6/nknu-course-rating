@@ -30,13 +30,16 @@ const semLabel = (id: string | null) => {
 const PERIODS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "A", "B", "C", "D"];
 const WEEKDAYS = [1, 2, 3, 4, 5, 6];
 
+// Refined, earthy palette (white-readable, harmonises with the gold theme) — a
+// weekly grid needs per-course distinction, so this is a muted multi-tone set,
+// not the single accent. No neon.
 const PALETTE = [
-  "var(--rate-grading)",
-  "var(--rate-quality)",
-  "var(--rate-sweet)",
-  "var(--cyan)",
-  "var(--warning)",
-  "var(--rate-load)",
+  "#a8761f", // amber (brand family)
+  "#7a6a45", // dark khaki
+  "#5f7355", // muted sage
+  "#4f6b78", // muted slate blue
+  "#7a5566", // muted plum
+  "#9c5f3a", // terracotta
 ];
 function colorFor(code: string) {
   let h = 0;
