@@ -41,6 +41,12 @@ const semLabel = (id: string) => {
 // ISO timestamp -> 2025/03/14 (deterministic; avoids server/client locale drift)
 const fmtDate = (iso: string) => iso.slice(0, 10).replace(/-/g, "/");
 
+// compact semester for tight meta lines, e.g. 114-2 / 114-暑
+const semCompact = (id: string) => {
+  const [y, t] = id.split("-");
+  return `${y}-${t === "3" ? "暑" : t}`;
+};
+
 export default async function CoursePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const courseKey = decodeURIComponent(code);
@@ -208,9 +214,8 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                               </span>
                               <div className="min-w-0 leading-tight">
                                 <div className="truncate text-sm font-semibold text-ink">{r.displayName}</div>
-                                <div className="mt-0.5 text-xs text-mute">
-                                  {r.semesterId && `${semLabel(r.semesterId)} 修課`}
-                                  {r.semesterId && " · "}
+                                <div className="mt-0.5 truncate text-xs text-mute">
+                                  {r.semesterId && `${semCompact(r.semesterId)} 修 · `}
                                   {fmtDate(r.createdAt)}
                                 </div>
                               </div>
