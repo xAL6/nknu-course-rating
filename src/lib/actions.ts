@@ -6,7 +6,15 @@ import { generateText } from "ai";
 import { deepseek } from "@ai-sdk/deepseek";
 import { createClient } from "@/lib/supabase/server";
 import { getReviews } from "@/lib/data/reviews";
-import { isAllowedEmail, randomDisplayName, RATING_DIMENSIONS } from "@/lib/config";
+import {
+  isAllowedEmail,
+  randomDisplayName,
+  RATING_DIMENSIONS,
+  REVIEW_TAG_VALUES,
+  MAX_REVIEW_TAGS,
+} from "@/lib/config";
+
+const ALLOWED_TAGS = new Set(REVIEW_TAG_VALUES);
 
 /** Require an authenticated NKNU-domain user; ensure their profile exists. */
 async function requireUser() {
@@ -46,6 +54,12 @@ export async function submitReview(formData: FormData) {
   const { supabase, user, displayName } = await requireUser();
   const input = reviewSchema.parse(Object.fromEntries(formData));
 
+  // tags arrive as repeated form fields — Object.fromEntries would drop all but
+  // the last, so read them with getAll. Dedupe, keep only known tags, cap length.
+  const tags = [...new Set(formData.getAll("tags").map(String))]
+    .filter((t) => ALLOWED_TAGS.has(t))
+    .slice(0, MAX_REVIEW_TAGS);
+
   const { data: course } = await supabase
     .from("courses")
     .select("id, semester_id")
@@ -65,6 +79,7 @@ export async function submitReview(formData: FormData) {
       grading: input.grading,
       short_comment: input.shortComment || null,
       body: input.body || null,
+      tags,
       display_name: displayName,
       updated_at: new Date().toISOString(),
     },

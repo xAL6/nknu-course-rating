@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ExternalLink, MapPin, Users, MessageSquare } fro
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RatingSummaryBars } from "@/components/rating-summary";
+import { TagChips } from "@/components/tag-chips";
 import { ReviewVotes } from "@/components/review-votes";
 import { ReviewComments } from "@/components/review-comments";
 import { ReviewSummaryAI } from "@/components/review-summary-ai";
@@ -174,6 +175,10 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                   )}
                 </div>
 
+                {sec.summary && Object.keys(sec.summary.tagCounts).length > 0 && (
+                  <TagChips counts={sec.summary.tagCounts} max={8} className="mt-3" />
+                )}
+
                 <ReviewSummaryAI
                   courseKey={course.courseKey}
                   teacherKey={sec.teacherKey}
@@ -257,6 +262,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                             );
                           })}
                         </div>
+                        {r.tags.length > 0 && <TagChips tags={r.tags} className="mt-2" />}
                         {r.shortComment && <p className="mt-2 text-sm font-medium">{r.shortComment}</p>}
                         {r.body && <p className="mt-1 text-sm whitespace-pre-wrap text-body">{r.body}</p>}
                         <ReviewComments
