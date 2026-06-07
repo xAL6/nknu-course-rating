@@ -227,7 +227,6 @@ function Stat({ n, label }: { n: number; label: string }) {
 function BentoBig() {
   return (
     <div className="glass glass-interactive relative flex h-full flex-col overflow-hidden rounded-2xl p-6">
-      <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: "var(--rate-sweet)" }} aria-hidden />
       <div className="flex size-11 items-center justify-center rounded-xl" style={{ color: "var(--rate-sweet)", backgroundColor: "color-mix(in oklch, var(--rate-sweet) 14%, transparent)" }}>
         <Star className="size-5" />
       </div>
@@ -252,7 +251,6 @@ function Bento({
 }: { icon: React.ReactNode; title: string; desc: string; color: string; row?: boolean }) {
   return (
     <div className={`glass glass-interactive relative h-full overflow-hidden rounded-2xl p-6 ${row ? "flex flex-col justify-center" : ""}`}>
-      <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} aria-hidden />
       <div className="flex size-10 items-center justify-center rounded-xl" style={{ color, backgroundColor: `color-mix(in oklch, ${color} 14%, transparent)` }}>
         {icon}
       </div>
