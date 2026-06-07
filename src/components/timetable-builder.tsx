@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import Link from "next/link";
-import { Search, Plus, X, Trash2, AlertTriangle, Share2, Save, CalendarRange } from "lucide-react";
+import { Search, Plus, X, Trash2, AlertTriangle, Share2, Save, CalendarRange, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import {
   useTimetable,
@@ -19,6 +19,7 @@ import {
 import { saveTimetable, loadTimetable } from "@/lib/actions";
 import { SEMESTER_TERMS } from "@/lib/config";
 import { WEEKDAY_LABELS, PERIOD_TIMES } from "@/lib/period-shared";
+import { findCommuteIssues, campusFromRoom } from "@/lib/campus";
 
 const semLabel = (id: string | null) => {
   if (!id) return null;
@@ -50,6 +51,8 @@ export function TimetableBuilder() {
   const slotMap = buildSlotMap(courses);
   const hasConflict = [...slotMap.values()].some((arr) => arr.length > 1);
   const semester = timetableSemester(courses);
+  // Cross-campus commute warnings: same-day campus switches with ≤1 free period.
+  const commuteIssues = findCommuteIssues(courses, PERIODS).filter((i) => i.gap <= 1);
 
   // Import a shared timetable from the URL (?s=token) once on mount.
   useEffect(() => {
@@ -71,6 +74,21 @@ export function TimetableBuilder() {
         {hasConflict && (
           <div className="mb-3 flex items-center gap-2 rounded-md border border-warning-soft bg-warning-soft/50 px-3 py-2 text-sm text-warning-deep">
             <AlertTriangle className="size-4" /> 課表有衝堂，紅色格子為衝突時段。
+          </div>
+        )}
+        {commuteIssues.length > 0 && (
+          <div className="mb-3 rounded-md border border-warning-soft bg-warning-soft/50 px-3 py-2 text-warning-deep">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <MapPin className="size-4" /> 跨校區提醒（和平 ↔ 燕巢）
+            </div>
+            <ul className="mt-1 space-y-0.5 pl-6 text-xs">
+              {commuteIssues.map((it, i) => (
+                <li key={i} className="list-disc">
+                  {WEEKDAY_LABELS[it.weekday]} 第{it.fromPeriod}節（{it.fromCampus}）→ 第{it.toPeriod}節（{it.toCampus}）：
+                  {it.gap === 0 ? "緊接著換校區，通勤時間不足" : "中間僅 1 節空堂，留意通勤時間"}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
         <Grid courses={courses} slotMap={slotMap} />
@@ -210,7 +228,9 @@ function Grid({
                         href={`/course/${encodeURIComponent(c.courseKey || c.courseCode)}`}
                         className="mb-0.5 block rounded px-1 py-0.5 text-left text-[11px] leading-tight text-white"
                         style={{ backgroundColor: conflict ? "var(--error)" : colorFor(c.courseCode) }}
-                        title={`${c.name}${c.classroom ? ` · ${c.classroom}` : ""}`}
+                        title={`${c.name}${c.classroom ? ` · ${c.classroom}` : ""}${
+                          campusFromRoom(c.campus ?? c.classroom) ? `（${campusFromRoom(c.campus ?? c.classroom)}）` : ""
+                        }`}
                       >
                         <span className="line-clamp-2">{c.name}</span>
                       </Link>
@@ -335,7 +355,13 @@ function SelectedList({ courses }: { courses: TimetableCourse[] }) {
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{c.name}</span>
-                <span className="block truncate text-mute">{c.teachers.join("、") || "待聘"}</span>
+                <span className="block truncate text-mute">
+                  {c.teachers.join("、") || "待聘"}
+                  {(() => {
+                    const campus = c.campus ?? campusFromRoom(c.classroom);
+                    return campus ? ` · ${campus}` : "";
+                  })()}
+                </span>
               </span>
               <button
                 onClick={() => removeFromTimetable(c)}
