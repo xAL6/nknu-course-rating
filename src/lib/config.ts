@@ -36,6 +36,29 @@ export const RATING_DIMENSIONS = [
 
 export type RatingDimensionKey = (typeof RATING_DIMENSIONS)[number]["key"];
 
+/**
+ * Quick tags — a controlled vocabulary of *categorical* course facts the five
+ * numeric dimensions can't express (點名/加簽/考試/作業/授課形式). Students pick a
+ * few when reviewing; tags are aggregated per (course, teacher), shown as chips,
+ * filterable, and fed to the AI advisor (grounded RAG).
+ *
+ * ⚠️ Keep in sync with the CHECK constraint in
+ *    supabase/migrations/0020_review_tags.sql (the exact same set of strings).
+ */
+export const REVIEW_TAG_GROUPS = [
+  { label: "點名 / 出席", tags: ["會點名", "不點名", "點名抽人"] },
+  { label: "加簽", tags: ["好加簽", "難加簽"] },
+  { label: "考試 / 作業", tags: ["不考試", "重期末", "有期中考", "重報告", "作業偏多", "需分組"] },
+  { label: "給分 / 風險", tags: ["佛心給分", "容易被當"] },
+  { label: "授課形式", tags: ["全英授課", "遠距居多"] },
+] as const;
+
+/** Flat list of every allowed tag string — for validation and filtering. */
+export const REVIEW_TAG_VALUES: string[] = REVIEW_TAG_GROUPS.flatMap((g) => [...g.tags]);
+
+/** Max tags a single review may carry (also enforced by the DB CHECK). */
+export const MAX_REVIEW_TAGS = 5;
+
 /** Phase 3 AI feature flags (DeepSeek). Default off until configured. */
 export const AI_FEATURES = {
   reviewSummary: process.env.NEXT_PUBLIC_AI_REVIEW_SUMMARY === "true",

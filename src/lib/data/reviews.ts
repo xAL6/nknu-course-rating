@@ -22,6 +22,7 @@ export type Review = {
   grading: number | null;
   shortComment: string | null;
   body: string | null;
+  tags: string[];
   likeCount: number;
   usefulCount: number;
   createdAt: string;
@@ -53,6 +54,7 @@ export async function getReviews(courseKey: string): Promise<Review[]> {
     grading: r.grading,
     shortComment: r.short_comment,
     body: r.body,
+    tags: (r.tags as string[] | null) ?? [],
     likeCount: r.like_count ?? 0,
     usefulCount: r.useful_count ?? 0,
     createdAt: r.created_at,
@@ -92,6 +94,7 @@ export async function getTeacherSummaries(courseKey: string): Promise<TeacherSum
       loading: d.avg_loading,
       quality: d.avg_quality,
       grading: d.avg_grading,
+      tagCounts: (d.tag_counts as Record<string, number> | null) ?? {},
     },
   }));
 }
