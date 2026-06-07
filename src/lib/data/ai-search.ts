@@ -533,3 +533,97 @@ export async function buildScheduleForAI(args: {
 
   return { kind: "schedule", semester, totalCredits, courses, note };
 }
+
+// ── Ranking ("全校最甜/最涼/收穫最高/最多人評/最熱門") ───────────────────────────
+export type RankedCourse = {
+  url: string;
+  courseKey: string;
+  name: string;
+  courseCode: string;
+  teachers: string[];
+  reviewCount: number;
+  sweetness: number | null;
+  coolness: number | null;
+  quality: number | null;
+  tags: Record<string, number>;
+};
+
+export async function topCoursesForAI(args: {
+  by?: "sweet" | "cool" | "takeaway" | "reviews";
+  limit?: number;
+}): Promise<{ kind: "ranking"; by: string; courses: RankedCourse[] }> {
+  const supabase = await createClient();
+  const col =
+    args.by === "cool"
+      ? "avg_coolness"
+      : args.by === "takeaway"
+        ? "avg_quality"
+        : args.by === "reviews"
+          ? "review_count"
+          : "avg_sweetness";
+  const { data } = await supabase
+    .from("course_rating_summary")
+    .select("course_key, teacher_key, course_code, name, review_count, avg_sweetness, avg_coolness, avg_quality, tag_counts")
+    .gt("review_count", 0)
+    .order(col, { ascending: false })
+    .limit(Math.min(args.limit ?? 8, 20));
+  const courses: RankedCourse[] = (data ?? []).map((s) => ({
+    url: coursePath(s.course_key as string),
+    courseKey: s.course_key as string,
+    name: s.name as string,
+    courseCode: s.course_code as string,
+    teachers: (s.teacher_key as string | null) ? (s.teacher_key as string).split("、") : [],
+    reviewCount: (s.review_count as number) ?? 0,
+    sweetness: s.avg_sweetness as number | null,
+    coolness: s.avg_coolness as number | null,
+    quality: s.avg_quality as number | null,
+    tags: (s.tag_counts as Record<string, number> | null) ?? {},
+  }));
+  return { kind: "ranking", by: args.by ?? "sweet", courses };
+}
+
+// ── By weekday / time-of-day ("週五下午有哪些涼課") ──────────────────────────────
+const PERIOD_BUCKETS: Record<string, string[]> = {
+  morning: ["1", "2", "3", "4"],
+  afternoon: ["5", "6", "7", "8", "9", "10"],
+  evening: ["A", "B", "C", "D"],
+};
+
+export async function coursesByTimeForAI(args: {
+  weekday: number;
+  timeOfDay?: "morning" | "afternoon" | "evening";
+  department?: string;
+  prefer?: "sweet" | "cool" | "takeaway";
+  limit?: number;
+}): Promise<
+  | { kind: "timeList"; weekday: number; timeOfDay: string | null; count: number; courses: AiCourseResult[] }
+  | { error: string; message: string }
+> {
+  const supabase = await createClient();
+  const semester = await latestSemester();
+  if (!semester) return { error: "NO_SEMESTER", message: "目前沒有可用的學期資料。" };
+
+  let deptCode: string | undefined;
+  if (args.department) {
+    const { data: deptRows } = await supabase.rpc("facet_departments", { p_sem: semester, p_level: null, p_dn: null, p_campus: null });
+    const depts = (deptRows ?? []) as { code: string; name: string }[];
+    const kw = args.department.replace(/系所?$|學系$|學程$/u, "").trim();
+    const cand = depts.filter((d) => d.name === args.department || d.name.includes(kw) || (kw && [...kw].every((ch) => d.name.includes(ch))));
+    deptCode = cand.find((d) => !/碩|博|在職/.test(d.name))?.code ?? cand[0]?.code;
+  }
+
+  const r = await listCourses({ semester, dept: deptCode, pageSize: 4000 });
+  const bucket = args.timeOfDay ? PERIOD_BUCKETS[args.timeOfDay] : null;
+  const matched = r.items.filter((c) =>
+    (c.offerings[0]?.slots ?? []).some(
+      (s) => Number(s.weekday) === args.weekday && (!bucket || bucket.includes(String(s.period))),
+    ),
+  );
+  const sums = await fetchSummaries(matched.map((c) => c.courseKey).filter(Boolean));
+  const dim: keyof AiRating = args.prefer === "sweet" ? "sweetness" : args.prefer === "takeaway" ? "quality" : "coolness";
+  const courses = matched
+    .map((c) => toAiResult(c, sums.get(c.courseKey)))
+    .sort((a, b) => ((b.rating?.[dim] as number | null) ?? 0) - ((a.rating?.[dim] as number | null) ?? 0))
+    .slice(0, 16);
+  return { kind: "timeList", weekday: args.weekday, timeOfDay: args.timeOfDay ?? null, count: courses.length, courses };
+}
