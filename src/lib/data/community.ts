@@ -33,6 +33,20 @@ export async function getHomeStats(): Promise<HomeStats> {
   };
 }
 
+/** Department names for the homepage marquee (real breadth of the catalog). */
+export async function getDepartmentNames(limit = 36): Promise<{ code: string; name: string }[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("departments")
+    .select("code, name")
+    .order("name")
+    .limit(limit);
+  return (data ?? [])
+    .map((d) => ({ code: d.code as string, name: d.name as string }))
+    .filter((d) => d.name && !/占用|未定|nan/i.test(d.name));
+}
+
 export async function getTopContributors(limit = 50): Promise<Contributor[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
