@@ -14,7 +14,7 @@
  * does exactly that.
  */
 import { createAdminClient } from "../src/lib/supabase/admin";
-import { randomDisplayName, REVIEW_TAG_VALUES } from "../src/lib/config";
+import { REVIEW_TAG_VALUES } from "../src/lib/config";
 
 type Sb = ReturnType<typeof createAdminClient>;
 
@@ -51,54 +51,78 @@ function sampleN<T>(a: T[], n: number): T[] {
   return shuffle(a).slice(0, Math.min(n, a.length));
 }
 
-// ── review-text phrase banks (rating-aware so text matches the numbers) ──────
+// ── funny anonymized handles (for demo) ──────────────────────────────────────
+const H_PREFIX = [
+  "資深", "業餘", "菜逼八", "佛系", "硬派", "邊緣", "資優", "學店", "快樂", "崩潰",
+  "資淺", "全校最強", "傳說中的", "退休", "兼職",
+];
+const H_ROLE = [
+  "蹺課仔", "共筆王", "重修生", "早八鬥士", "加簽乞丐", "點名絕緣體", "報告製造機",
+  "停修候選人", "GPA保衛者", "涼課獵人", "死當邊緣人", "考古題信徒", "分組孤兒",
+  "通識亂修俠", "期末突擊隊", "微積分受害者", "第八節殭屍", "螢幕前的影子", "選課手刀王",
+  "凌晨交作業的人",
+];
+function makeHandles(n: number): string[] {
+  const set = new Set<string>();
+  let guard = 0;
+  while (set.size < n && guard++ < n * 50) {
+    const name = `${pick(H_PREFIX)}${pick(H_ROLE)}`;
+    set.add(name);
+  }
+  // top up with a numeric suffix if the combo space ran dry
+  let k = 2;
+  while (set.size < n) set.add(`${pick(H_PREFIX)}${pick(H_ROLE)}${k++}`);
+  return shuffle([...set]);
+}
+
+// ── review-text phrase banks (rating-aware + 有梗, for demo) ──────────────────
 const POS_QUALITY = [
-  "老師上課很有條理，重點都會幫你抓出來",
-  "內容蠻紮實的，跟著上完真的學得到東西",
-  "講解清楚，難的觀念也會用例子帶過",
-  "投影片做得很完整，複習很方便",
-  "老師很願意回答問題，下課問也不會被嫌",
-  "上課會補充很多課本沒有的東西，收穫滿大",
-  "教學認真，看得出來有用心備課",
+  "老師根本行走的維基百科，問什麼都答得出來",
+  "上完一學期發現自己居然真的會了，當場嚇到",
+  "投影片做得比我畢業專題還用心",
+  "乾貨多到筆記抄到手抽筋，但真的值得",
+  "講課又有料又好笑，難得一堂不會想睡的課",
+  "老師舉的例子超生活化，秒懂",
 ];
 const NEG_QUALITY = [
-  "上課比較照本宣科，自己看課本差不多",
-  "講解有點跳，要回家自己再補一次",
-  "進度有時候有點亂，會跟不太上",
-  "內容偏淺，想深入要自己找資料",
-  "老師講話有點小聲，後面容易放空",
+  "上課內容估狗都有，來教室純粹刷存在感",
+  "老師講到哪我也不知道，反正期末再說",
+  "PPT 是十年前的，連錯字都沒改",
+  "聽完一節課，筆記上只有我畫的小烏龜",
+  "全程照念課本，我自己在家念還比較快",
 ];
 const HEAVY_LOAD = [
-  "作業偏多，幾乎每週都有要交",
-  "報告一個接一個，期末會有點爆",
-  "考試＋報告＋作業，後半學期要排好時間",
-  "需要花不少課後時間，修之前先評估一下",
+  "作業多到我以為我輔修了這門課",
+  "報告一個接一個，室友以為我搬去圖書館住了",
+  "每週都有作業，週末是可以吃的東西嗎",
+  "期末三個報告同時爆，我直接原地升天",
 ];
 const LIGHT_LOAD = [
-  "作業不多，負擔算很輕",
-  "幾乎沒什麼作業，蠻好過的",
-  "壓力不大，考前讀一下就行",
-  "整體很輕鬆，可以當涼課修",
+  "涼到可以邊上課邊追劇",
+  "作業少到我懷疑老師是不是忘記出了",
+  "考前翻一下就過，佛到不行",
+  "這門課是來養生的，建議搭配溫開水服用",
 ];
 const SWEET_GRADE = [
-  "給分很甜，認真寫就有不錯的分數",
-  "只要有交、有到，分數都很漂亮",
-  "佛心老師，不太會當人",
-  "甜度頗高，想衝 GPA 可以考慮",
+  "甜到蛀牙，閉著眼睛都能過",
+  "只要你還活著、有交，分數就很漂亮",
+  "老師佛到我都不好意思翹課了",
+  "給分甜到我懷疑教授是糖做的",
 ];
 const HARSH_GRADE = [
-  "給分偏嚴，想拿高分要很拼",
-  "考試蠻硬的，平均不會太高",
-  "標準有點高，分數沒有想像中好拿",
+  "給分硬到可以拿來敲核桃",
+  "考卷發下來我一度以為拿到別人的",
+  "想拿 A 要先燒香拜拜順便擲筊",
+  "被當得心服口服，老師標準是真的高",
 ];
-const ATTEND = ["會點名要注意出席", "幾乎不點名，蠻自由的", "偶爾抽點，別太常翹"];
+const ATTEND = ["點名點到我以為在當兵", "幾乎不點名，自由到想哭", "會抽點，賭徒們自己保重"];
 const CLOSING = [
-  "整體推薦，想了解這個領域的可以修",
-  "想輕鬆過的話可以考慮",
-  "建議先把基礎顧好再來會比較跟得上",
-  "看個人需求，但我自己是覺得值得",
-  "中規中矩，沒有特別雷",
-  "蠻喜歡這門課的氛圍，會推給朋友",
+  "總之推爆，朋友我先選了你動作快點",
+  "想涼的快來、想學東西的也來，雙贏",
+  "沒有雷，雷的是當初不認真的我",
+  "建議先顧好基礎，不然會像我一樣邊哭邊修",
+  "會推給下一屆學弟妹（如果他們對我好的話）",
+  "選這門就對了，相信學長姐的眼淚",
 ];
 
 function buildText(p: { quality: number; loading: number; grading: number; coolness: number }) {
@@ -195,26 +219,35 @@ async function ensureUsers(sb: Sb, n: number) {
     ids.push(id);
   }
   process.stdout.write(`\n`);
-  // profiles (display_name snapshot used on each review)
-  const profiles = ids.map((user_id) => ({ user_id, display_name: randomDisplayName() }));
+  // profiles (display_name snapshot used on each review) — funny handles for demo
+  const handles = makeHandles(ids.length);
+  const profiles = ids.map((user_id, i) => ({ user_id, display_name: handles[i] }));
   const { error: pErr } = await sb.from("profiles").upsert(profiles, { onConflict: "user_id", ignoreDuplicates: true });
   if (pErr) throw pErr;
   // map id -> display name (read back, since some profiles pre-existed)
   const { data: prows } = await sb.from("profiles").select("user_id, display_name").in("user_id", ids);
   const nameById = new Map((prows ?? []).map((p) => [p.user_id, p.display_name as string]));
-  return ids.map((id) => ({ id, name: nameById.get(id) ?? randomDisplayName() }));
+  return ids.map((id, i) => ({ id, name: nameById.get(id) ?? handles[i] }));
 }
 
 async function purge(sb: Sb) {
   const users = await listSeedUsers(sb);
-  console.log(`Purging ${users.length} seed users (reviews/profiles cascade)…`);
-  let done = 0;
+  const ids = users.map((u) => u.id);
+  console.log(`Purging ${ids.length} seed users' data…`);
+  // Delete reviews + profiles directly (service role). Deleting reviews fires the
+  // summary trigger; profiles are FK'd from reviews so reviews must go first.
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    await sb.from("reviews").delete().in("user_id", chunk);
+    await sb.from("profiles").delete().in("user_id", chunk);
+  }
+  // Best-effort: also remove the auth identities (GoTrue sometimes refuses; ignore).
+  let removed = 0;
   for (const u of users) {
     const { error } = await sb.auth.admin.deleteUser(u.id);
-    if (error) console.warn(`  deleteUser ${u.email}: ${error.message}`);
-    else done++;
+    if (!error) removed++;
   }
-  console.log(`Removed ${done}/${users.length} seed users.`);
+  console.log(`Cleared data for ${ids.length} seed users (auth rows removed: ${removed}).`);
 }
 
 // ── course sampling ──────────────────────────────────────────────────────────
