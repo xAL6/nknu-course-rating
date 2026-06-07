@@ -252,7 +252,7 @@ function Grid({
                               // course colour for identity, add a red ring so you see exactly
                               // which time slot clashes.
                               ...(conflict
-                                ? { boxShadow: "0 0 0 2px var(--error), 0 0 0 4px color-mix(in oklch, var(--error) 30%, transparent)" }
+                                ? { boxShadow: "inset 0 0 0 2px var(--error), inset 0 0 0 4px color-mix(in oklch, var(--error) 30%, transparent)" }
                                 : {}),
                             }}
                             title={`${c.name}${c.classroom ? ` · ${c.classroom}` : ""}${

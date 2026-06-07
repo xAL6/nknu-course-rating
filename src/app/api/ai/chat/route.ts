@@ -118,7 +118,7 @@ function latestUserText(messages: UIMessage[]): string {
 
 function guardReason(messages: UIMessage[]): "long" | "attack" | null {
   const text = latestUserText(messages);
-  if (text.length > 1500) return "long";
+  if (text.length > 4000) return "long";
   if (ATTACK_PATTERNS.some((re) => re.test(text))) return "attack";
   const total = messages.reduce(
     (n, m) =>

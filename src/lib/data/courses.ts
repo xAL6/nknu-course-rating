@@ -132,6 +132,9 @@ export type CourseListParams = {
   pageSize?: number;
   /** Attach rating summaries to the returned cards (per course_key). */
   withSummary?: boolean;
+  /** Compute the cascading facet lists (default true). Set false for AI/internal
+   *  callers that only need the course rows — skips facet RPCs. */
+  withFacets?: boolean;
 };
 
 /**
@@ -269,24 +272,29 @@ export async function listCourses(params: CourseListParams): Promise<CourseListR
     return ranked;
   }
 
-  // Cascading facets (DISTINCT server-side via RPC).
-  const [{ data: deptRows }, classRes] = await Promise.all([
-    supabase.rpc("facet_departments", {
-      p_sem: sem,
-      p_level: level ?? null,
-      p_dn: dayNight ?? null,
-      p_campus: campus ?? null,
-    }),
-    dept
-      ? supabase.rpc("facet_classes", {
+  // Cascading facets (DISTINCT server-side via RPC). Skipped for internal/AI
+  // callers that only want the course rows (withFacets:false) — avoids wasted
+  // RPC round-trips, especially when called in a per-dept/per-class loop.
+  const wantFacets = params.withFacets !== false;
+  const [{ data: deptRows }, classRes] = wantFacets
+    ? await Promise.all([
+        supabase.rpc("facet_departments", {
           p_sem: sem,
           p_level: level ?? null,
           p_dn: dayNight ?? null,
           p_campus: campus ?? null,
-          p_dept: dept,
-        })
-      : Promise.resolve({ data: [] as Facet[] }),
-  ]);
+        }),
+        dept
+          ? supabase.rpc("facet_classes", {
+              p_sem: sem,
+              p_level: level ?? null,
+              p_dn: dayNight ?? null,
+              p_campus: campus ?? null,
+              p_dept: dept,
+            })
+          : Promise.resolve({ data: [] as Facet[] }),
+      ])
+    : [{ data: [] as Facet[] }, { data: [] as Facet[] }];
   const departments = (deptRows ?? []) as Facet[];
   const classes = (classRes.data ?? []) as Facet[];
 
