@@ -43,9 +43,7 @@ const reviewSchema = z.object({
   semesterId: z.string().optional(),
   sweetness: z.coerce.number().int().min(1).max(5),
   coolness: z.coerce.number().int().min(1).max(5),
-  loading: z.coerce.number().int().min(1).max(5),
   quality: z.coerce.number().int().min(1).max(5),
-  grading: z.coerce.number().int().min(1).max(5),
   shortComment: z.string().max(100).optional(),
   body: z.string().max(5000).optional(),
 });
@@ -74,9 +72,7 @@ export async function submitReview(formData: FormData) {
       semester_id: input.semesterId ?? course.semester_id,
       sweetness: input.sweetness,
       coolness: input.coolness,
-      loading: input.loading,
       quality: input.quality,
-      grading: input.grading,
       short_comment: input.shortComment || null,
       body: input.body || null,
       tags,
@@ -244,7 +240,7 @@ export async function getReviewSummary(
     system:
       "你是課程評價摘要助手。根據學生對某位老師某門課的真實評價，寫出客觀、精簡的繁體中文摘要。" +
       "不可捏造未提及的資訊。輸出格式：先一句總結，接著「優點」與「注意」兩個 Markdown 條列（各 2–4 點）。",
-    prompt: `評分面向 1–5（甜度=給分甜、涼度=輕鬆、負擔=作業考試多、品質=內容紮實、給分）。\n以下是 ${reviews.length} 則評價：\n${lines.join("\n")}`,
+    prompt: `評分面向 1–5（甜度=給分甜、涼度=輕鬆、收穫=學到多少/內容紮實）。\n以下是 ${reviews.length} 則評價：\n${lines.join("\n")}`,
   });
 
   await supabase

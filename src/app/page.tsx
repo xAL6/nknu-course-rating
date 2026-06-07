@@ -12,9 +12,7 @@ import { getHomeStats, getTrendingCourses, getDepartmentNames } from "@/lib/data
 const RATE = [
   { label: "甜度", v: 86, c: "var(--rate-sweet)" },
   { label: "涼度", v: 72, c: "var(--rate-cool)" },
-  { label: "負擔", v: 40, c: "var(--rate-load)" },
-  { label: "品質", v: 92, c: "var(--rate-quality)" },
-  { label: "給分", v: 80, c: "var(--rate-grading)" },
+  { label: "收穫", v: 92, c: "var(--rate-quality)" },
 ];
 
 export default async function Home() {
@@ -121,7 +119,7 @@ export default async function Home() {
                 </div>
                 <div className="mt-5 flex items-center justify-between border-t border-hairline pt-4 text-xs text-mute">
                   <span>52 則評價</span>
-                  <span className="text-rate-quality">品質頂尖</span>
+                  <span className="text-rate-quality">收穫滿滿</span>
                 </div>
               </div>
             </div>
@@ -191,7 +189,7 @@ export default async function Home() {
                     <span className="block truncate font-medium group-hover:text-link">{t.name}</span>
                     <span className="block truncate text-xs text-mute">{t.teachers.join("、") || t.courseCode}</span>
                   </span>
-                  {t.avgQuality != null && <span className="shrink-0 text-xs font-medium text-rate-quality">品質 {t.avgQuality.toFixed(1)}</span>}
+                  {t.avgQuality != null && <span className="shrink-0 text-xs font-medium text-rate-quality">收穫 {t.avgQuality.toFixed(1)}</span>}
                 </Link>
               ))}
             </div>
@@ -230,8 +228,8 @@ function BentoBig() {
       <div className="flex size-11 items-center justify-center rounded-xl" style={{ color: "var(--rate-sweet)", backgroundColor: "color-mix(in oklch, var(--rate-sweet) 14%, transparent)" }}>
         <Star className="size-5" />
       </div>
-      <h3 className="mt-4 text-xl font-semibold tracking-tight">五維度評價</h3>
-      <p className="mt-2 max-w-sm text-sm text-body">甜度、涼度、負擔、品質、給分——量化每門課的真實樣貌,不再只看一個總分。</p>
+      <h3 className="mt-4 text-xl font-semibold tracking-tight">三維度評分</h3>
+      <p className="mt-2 max-w-sm text-sm text-body">甜度、涼度、收穫——三個面向量化每門課的真實樣貌,不再只看一個總分。</p>
       <div className="mt-auto space-y-2 pt-6">
         {RATE.map((r) => (
           <div key={r.label} className="flex items-center gap-3">
