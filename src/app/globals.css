@@ -139,9 +139,15 @@
   --rate-quality: #7928ca;
   --rate-grading: #0070f3;
 
+  /* single brand accent (refined gold) — replaces the rainbow spectrum */
+  --accent: #b06f00;
+  --accent-ink: #8a5600;
+  --accent-soft: color-mix(in oklch, #b06f00 14%, transparent);
+  --accent-line: color-mix(in oklch, #b06f00 30%, transparent);
+
   /* refined light glass (toggle) */
-  --ambient-base: #eceef4;
-  --ambient-blob-opacity: 0.24;
+  --ambient-base: #f1f0ec;
+  --ambient-blob-opacity: 0.5;
   --ambient-grain-opacity: 0.015;
   --glass-bg: color-mix(in oklch, white 58%, transparent);
   --glass-bg-strong: color-mix(in oklch, white 74%, transparent);
@@ -199,9 +205,15 @@
   --link: #3291ff;
   --link-deep: #0070f3;
 
+  /* single brand accent (refined warm gold on dark) */
+  --accent: #f5b13d;
+  --accent-ink: #f7be5c;
+  --accent-soft: color-mix(in oklch, #f5b13d 16%, transparent);
+  --accent-line: color-mix(in oklch, #f5b13d 34%, transparent);
+
   /* refined dark glass (default) */
-  --ambient-base: #08080c;
-  --ambient-blob-opacity: 0.4;
+  --ambient-base: #0a0a0c;
+  --ambient-blob-opacity: 0.6;
   --ambient-grain-opacity: 0.04;
   --glass-bg: color-mix(in oklch, #16161d 50%, transparent);
   --glass-bg-strong: color-mix(in oklch, #131319 66%, transparent);
@@ -287,24 +299,13 @@
   .spectrum-bar {
     background: linear-gradient(
       90deg,
-      var(--rate-sweet),
-      var(--rate-grading),
-      var(--rate-cool),
-      var(--rate-quality),
-      var(--rate-load)
+      color-mix(in oklch, var(--accent) 35%, transparent),
+      var(--accent),
+      color-mix(in oklch, var(--accent) 35%, transparent)
     );
   }
   .text-spectrum {
-    background: linear-gradient(
-      115deg,
-      var(--rate-sweet),
-      var(--rate-quality) 38%,
-      var(--rate-grading) 66%,
-      var(--rate-cool)
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--accent);
   }
   .card-pop {
     transition:
@@ -371,19 +372,17 @@
     overflow: hidden;
     background: var(--ambient-base);
   }
-  /* elegant muted aurora (desaturated indigo/teal/plum — not a bright rainbow) */
+  /* one restrained warm glow in the single brand accent (no rainbow) */
   .ambient::before {
     content: "";
     position: absolute;
     inset: -20%;
     background:
-      radial-gradient(46% 46% at 16% 12%, #3a3a8c 0%, transparent 62%),
-      radial-gradient(42% 42% at 86% 14%, #1f6470 0%, transparent 62%),
-      radial-gradient(52% 52% at 78% 84%, #5e2a5c 0%, transparent 64%),
-      radial-gradient(40% 40% at 28% 88%, #2a4d7a 0%, transparent 64%);
-    filter: blur(70px) saturate(0.85);
+      radial-gradient(55% 45% at 78% -8%, var(--accent) 0%, transparent 58%),
+      radial-gradient(45% 40% at 12% 6%, color-mix(in oklch, var(--accent) 55%, transparent) 0%, transparent 60%);
+    filter: blur(90px) saturate(0.9);
     opacity: var(--ambient-blob-opacity);
-    animation: ambient-drift 40s ease-in-out infinite alternate;
+    animation: ambient-drift 48s ease-in-out infinite alternate;
     will-change: transform;
   }
   @keyframes ambient-drift {
@@ -391,7 +390,7 @@
       transform: translate3d(0, 0, 0) scale(1);
     }
     to {
-      transform: translate3d(-3%, 2%, 0) scale(1.1);
+      transform: translate3d(-2%, 1.5%, 0) scale(1.08);
     }
   }
   @media (prefers-reduced-motion: reduce) {

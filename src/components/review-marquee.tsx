@@ -4,9 +4,9 @@ import Link from "next/link";
 import type { RecentReview } from "@/lib/data/community";
 
 const DIMS = [
-  { key: "sweetness", label: "甜", color: "var(--rate-sweet)" },
-  { key: "coolness", label: "涼", color: "var(--rate-cool)" },
-  { key: "quality", label: "穫", color: "var(--rate-quality)" },
+  { key: "sweetness", label: "甜", color: "var(--accent)" },
+  { key: "coolness", label: "涼", color: "var(--accent)" },
+  { key: "quality", label: "穫", color: "var(--accent)" },
 ] as const;
 
 /** Infinite ticker of real student reviews (pauses on hover). */

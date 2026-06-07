@@ -29,9 +29,9 @@ export function isAllowedEmail(email: string | null | undefined): boolean {
  * rows; they're simply no longer collected or shown.
  */
 export const RATING_DIMENSIONS = [
-  { key: "sweetness", label: "甜度", labelEn: "Sweetness", hint: "給分甜不甜", color: "var(--rate-sweet)", higherIsBetter: true },
-  { key: "coolness", label: "涼度", labelEn: "Coolness", hint: "課程輕不輕鬆", color: "var(--rate-cool)", higherIsBetter: true },
-  { key: "quality", label: "收穫", labelEn: "Takeaway", hint: "學到多少、內容紮實度", color: "var(--rate-quality)", higherIsBetter: true },
+  { key: "sweetness", label: "甜度", labelEn: "Sweetness", hint: "給分甜不甜", color: "var(--accent)", higherIsBetter: true },
+  { key: "coolness", label: "涼度", labelEn: "Coolness", hint: "課程輕不輕鬆", color: "var(--accent)", higherIsBetter: true },
+  { key: "quality", label: "收穫", labelEn: "Takeaway", hint: "學到多少、內容紮實度", color: "var(--accent)", higherIsBetter: true },
 ] as const;
 
 export type RatingDimensionKey = (typeof RATING_DIMENSIONS)[number]["key"];
