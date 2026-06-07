@@ -1,4 +1,12 @@
-import { streamText, tool, stepCountIs, convertToModelMessages, type UIMessage } from "ai";
+import {
+  streamText,
+  tool,
+  stepCountIs,
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  type UIMessage,
+} from "ai";
 import { deepseek } from "@ai-sdk/deepseek";
 import { z } from "zod";
 import {
@@ -61,6 +69,70 @@ const ANON_LIMIT = 8; // requests
 const AUTH_LIMIT = 40;
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
+// ── Deterministic pre-model guard (defense-in-depth) ──────────────────────────
+// Prompt injection is a trust-boundary problem, so the real safety comes from
+// least-privilege tools (read-only, parametrized — no SQL/writes) + a hardened
+// system prompt. This layer cheaply short-circuits blatant attacks/oversized
+// input BEFORE the model or any tool runs, with a snarky canned reply.
+const ATTACK_PATTERNS: RegExp[] = [
+  /ignore\s+(all\s+|the\s+)?(previous|prior|above)/i,
+  /disregard\s+(all\s+|the\s+)?(previous|above|instructions?)/i,
+  /system\s*prompt/i,
+  /\bdeveloper\s*mode\b/i,
+  /\bDAN\b/,
+  /jailbreak/i,
+  /prompt\s*injection/i,
+  /忽略[^。！？\n]{0,10}(前面|以上|先前|之前|所有|全部)[^。！？\n]{0,10}(指示|指令|規則|設定|提示|限制)/,
+  /(洩漏|貼出|印出|輸出|告訴我|給我看|reveal|print|repeat)[^。！？\n]{0,14}(system\s*prompt|系統提示|你的(指示|規則|設定|提示)|prompt)/i,
+  /(無限制|開發者|上帝|god)\s*模式/i,
+];
+const REFUSALS = [
+  "這招我看過一百遍了，省點力吧🥱 要選課就講課名，不然浪費的是你自己的時間。",
+  "嘖嘖，想套我話？我嘴比你期末成績還緊🔒 來，要查什麼課直接說。",
+  "想叫我『忽略指示』？不如你先忽略一下這個念頭🙄 回正題——你想修什麼課？",
+];
+
+function latestUserText(messages: UIMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m?.role === "user")
+      return (m.parts ?? [])
+        .filter((p) => p.type === "text")
+        .map((p) => (p as { text: string }).text ?? "")
+        .join(" ");
+  }
+  return "";
+}
+
+function guardReason(messages: UIMessage[]): "long" | "attack" | null {
+  const text = latestUserText(messages);
+  if (text.length > 1500) return "long";
+  if (ATTACK_PATTERNS.some((re) => re.test(text))) return "attack";
+  const total = messages.reduce(
+    (n, m) =>
+      n + (m.parts ?? []).reduce((s, p) => s + (p.type === "text" ? ((p as { text: string }).text?.length ?? 0) : 0), 0),
+    0,
+  );
+  if (total > 16000) return "long";
+  return null;
+}
+
+function cannedRefusal(reason: "long" | "attack"): Response {
+  const msg =
+    reason === "long"
+      ? "落落長一大串是想淹死我喔🌊？我是選課小幫手，不是你的樹洞——一句話講你想修什麼課。"
+      : REFUSALS[Math.floor(Math.random() * REFUSALS.length)];
+  const stream = createUIMessageStream({
+    execute: ({ writer }) => {
+      const id = "guard";
+      writer.write({ type: "text-start", id });
+      writer.write({ type: "text-delta", id, delta: msg });
+      writer.write({ type: "text-end", id });
+    },
+  });
+  return createUIMessageStreamResponse({ stream });
+}
+
 export async function POST(req: Request) {
   if (!process.env.DEEPSEEK_API_KEY) {
     return new Response(JSON.stringify({ error: "AI_DISABLED" }), {
@@ -92,6 +164,11 @@ export async function POST(req: Request) {
   }
 
   const { messages }: { messages: UIMessage[] } = await req.json();
+
+  // Layer 1: deterministic guard — blatant attacks / oversized input never reach
+  // the model or any tool.
+  const blocked = guardReason(messages);
+  if (blocked) return cannedRefusal(blocked);
 
   const result = streamText({
     model: deepseek(process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"),
