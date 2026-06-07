@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ExternalLink, MapPin, Users, MessageSquare } fro
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RatingSummaryBars } from "@/components/rating-summary";
+import { EnrollmentBadge } from "@/components/enrollment-badge";
 import { ReviewVotes } from "@/components/review-votes";
 import { ReviewComments } from "@/components/review-comments";
 import { ReviewSummaryAI } from "@/components/review-summary-ai";
@@ -14,6 +15,7 @@ import { formatSlots } from "@/lib/schedule";
 import { SEMESTER_TERMS, RATING_DIMENSIONS } from "@/lib/config";
 import { getCourse, getCourseSibling } from "@/lib/data/courses";
 import { getReviews, getTeacherSummaries } from "@/lib/data/reviews";
+import { avgFillRate } from "@/lib/enrollment";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Offering } from "@/lib/data/types";
@@ -135,6 +137,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
         <div className="mt-3 space-y-4">
           {sections.map((sec) => {
             const tReviews = reviewsByTk.get(sec.teacherKey) ?? [];
+            const enroll = avgFillRate(sec.offerings);
             return (
               <div key={sec.teacherKey || "tbd"} className="elev-2 rounded-lg bg-canvas p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -174,6 +177,14 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                   )}
                 </div>
 
+                {enroll.rate != null && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-mute">
+                    <span>搶課熱度</span>
+                    <EnrollmentBadge rate={enroll.rate} />
+                    <span>· 歷年 {enroll.sample} 學期平均</span>
+                  </div>
+                )}
+
                 <ReviewSummaryAI
                   courseKey={course.courseKey}
                   teacherKey={sec.teacherKey}
@@ -207,6 +218,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                           {o.enrollCount}/{o.enrollCap}
                         </span>
                       )}
+                      <EnrollmentBadge count={o.enrollCount} cap={o.enrollCap} />
                       <div className="ml-auto flex items-center gap-3">
                         {o.syllabusUrl && (
                           <a href={o.syllabusUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-link hover:underline">
