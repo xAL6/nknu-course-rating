@@ -186,46 +186,48 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
 
                 {/* This teacher's reviews */}
                 {tReviews.length > 0 && (
-                  <div className="mt-6 border-t border-hairline pt-5">
-                    <h3 className="flex items-center gap-1.5 text-sm font-semibold text-body">
-                      <MessageSquare className="size-4" /> 學生評價 · {tReviews.length} 則
+                  <div className="mt-7 border-t border-hairline pt-6">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold tracking-wide text-body">
+                      <MessageSquare className="size-4" style={{ color: "var(--accent)" }} /> 學生評價
+                      <span className="text-mute">{tReviews.length}</span>
                     </h3>
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-5 space-y-5">
                       {tReviews.map((r) => (
                         <article
                           key={r.id}
-                          className="rounded-xl border border-hairline bg-secondary/40 p-4 sm:p-5"
+                          className="rounded-2xl border border-[var(--glass-border)] bg-[color-mix(in_oklch,var(--card)_55%,transparent)] p-5 sm:p-6"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
                               <span
-                                className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-body"
+                                className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold"
+                                style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}
                                 aria-hidden
                               >
                                 {r.displayName.slice(0, 1)}
                               </span>
                               <div className="leading-tight">
-                                <div className="text-sm font-medium text-ink">{r.displayName}</div>
-                                <div className="font-mono text-xs text-mute">
+                                <div className="text-sm font-semibold text-ink">{r.displayName}</div>
+                                <div className="mt-0.5 text-xs text-mute">
                                   {r.semesterId && `${semLabel(r.semesterId)} 修課`}
                                   {r.semesterId && " · "}
-                                  {fmtDate(r.createdAt)} 發表
+                                  {fmtDate(r.createdAt)}
                                 </div>
                               </div>
                             </div>
                             <ReviewVotes reviewId={r.id} courseKey={course.courseKey} likeCount={r.likeCount} usefulCount={r.usefulCount} />
                           </div>
 
-                          <div className="mt-3.5 flex flex-wrap gap-2">
+                          <div className="mt-4 flex flex-wrap gap-2">
                             {RATING_DIMENSIONS.map((d) => {
                               const v = r[d.key] as number | null;
                               return (
                                 <span
                                   key={d.key}
-                                  className="inline-flex items-baseline gap-1.5 rounded-md bg-background/50 px-2.5 py-1"
+                                  className="inline-flex items-baseline gap-1.5 rounded-lg border border-hairline bg-[color-mix(in_oklch,var(--ink)_4%,transparent)] px-3 py-1.5"
                                 >
                                   <span className="text-xs text-mute">{d.label}</span>
-                                  <span className="font-mono text-sm font-semibold" style={{ color: d.color }}>
+                                  <span className="font-mono text-sm font-bold" style={{ color: d.color }}>
                                     {v ?? "—"}
                                   </span>
                                 </span>
@@ -233,11 +235,11 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                             })}
                           </div>
 
-                          {r.tags.length > 0 && <TagChips tags={r.tags} className="mt-3" />}
+                          {r.tags.length > 0 && <TagChips tags={r.tags} className="mt-3.5" />}
                           {(() => {
                             const comment = [r.shortComment, r.body].filter(Boolean).join("\n");
                             return comment ? (
-                              <p className="mt-3.5 text-[15px] leading-relaxed whitespace-pre-wrap text-body">{comment}</p>
+                              <p className="mt-4 text-[15px] leading-[1.75] whitespace-pre-wrap text-body sm:text-base">{comment}</p>
                             ) : null;
                           })()}
                           <ReviewComments
