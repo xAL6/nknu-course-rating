@@ -113,13 +113,20 @@ export async function updateProfile(formData: FormData) {
   const name = String(formData.get("displayName") ?? "").trim();
   if (name.length < 1 || name.length > 20) throw new Error("INVALID_NAME");
 
-  const patch: { display_name: string; avatar_url?: string } = { display_name: name };
+  const patch: { display_name: string; avatar_url?: string | null } = { display_name: name };
+
+  // remove old files in this user's folder (on replace or explicit removal)
+  async function clearFolder() {
+    const { data: list } = await admin.storage.from("avatars").list(user.id);
+    if (list?.length) await admin.storage.from("avatars").remove(list.map((f) => `${user.id}/${f.name}`));
+  }
 
   const file = formData.get("avatar");
   if (file instanceof File && file.size > 0) {
     if (file.size > 2_097_152) throw new Error("FILE_TOO_LARGE");
     const ext = MIME_EXT[file.type];
     if (!ext) throw new Error("BAD_FILE_TYPE");
+    await clearFolder();
     const path = `${user.id}/avatar-${Date.now()}.${ext}`;
     const buf = await file.arrayBuffer();
     const { error: upErr } = await admin.storage
@@ -127,6 +134,9 @@ export async function updateProfile(formData: FormData) {
       .upload(path, buf, { contentType: file.type, upsert: true });
     if (upErr) throw new Error("UPLOAD_FAILED");
     patch.avatar_url = admin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  } else if (formData.get("removeAvatar") === "1") {
+    await clearFolder();
+    patch.avatar_url = null;
   }
 
   const { error } = await admin.from("profiles").update(patch).eq("user_id", user.id);
