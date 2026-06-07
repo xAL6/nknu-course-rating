@@ -1,7 +1,12 @@
 import { streamText, tool, stepCountIs, convertToModelMessages, type UIMessage } from "ai";
 import { deepseek } from "@ai-sdk/deepseek";
 import { z } from "zod";
-import { retrieveCourses, compareTeachersForAI, getCourseDetailForAI } from "@/lib/data/ai-search";
+import {
+  retrieveCourses,
+  compareTeachersForAI,
+  getCourseDetailForAI,
+  buildScheduleForAI,
+} from "@/lib/data/ai-search";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
@@ -14,6 +19,7 @@ const SYSTEM = `你是「高師大選課助手」，協助高雄師範大學的�
   · searchCourses — 依關鍵字找課；可用 tags 篩選（例如只看「不點名」「可加簽」的課）。
   · compareTeachers — 比較「同一門課的不同授課老師」，傳入課名。
   · getCourseDetail — 深入單一課程（評分、標籤分布、歷年搶課熱度、短評），courseKey 取自其他工具回傳值。
+  · buildSchedule — 自動排出一份「不衝堂」的建議課表。把使用者說的空堂日轉成 freeWeekdays（1=週一…7=週日，例如「週五沒課」→[5]），系所名稱放 department；可帶 targetCredits、tags、prefer（sweet/easy/quality）。回傳的是一個「可行建議」，要提醒可再自行調整，不可捏造未回傳的課；若回傳 error，請把 message 轉達給學生。
 - 評分面向：甜度(給分甜)、涼度(輕鬆)、收穫(學到多少/內容紮實)。分數 1–5。
 - 工具回傳的 tags 是同學標記的「快速標籤」與其次數（例如 {"可加簽":12,"會點名":8}），代表點名/加簽/考試/作業/授課形式等事實面向。可引用標籤與次數佐證（例如「12 人標『可加簽』」），不可捏造未出現的標籤。
 - enrollFillRate 是「選課人數 / 名額」比例：越接近或超過 1 代表越搶手、越難選上；可用來回答「選上機率／好不好搶」。
@@ -102,6 +108,26 @@ export async function POST(req: Request) {
           const detail = await getCourseDetailForAI(courseKey);
           return detail ?? { error: "NOT_FOUND" };
         },
+      }),
+      buildSchedule: tool({
+        description:
+          "依條件自動排出一份『不衝堂』的建議課表（預設會避開跨校區緊接）。把『週五沒課』轉成 freeWeekdays:[5]，系所名稱放 department。",
+        inputSchema: z.object({
+          department: z.string().optional().describe("系所名稱關鍵字，例如『數學系』"),
+          semester: z.string().optional().describe("學年期，例如 114-1；省略則用最新學期"),
+          freeWeekdays: z
+            .array(z.number().int().min(1).max(7))
+            .optional()
+            .describe("要保留沒課的星期，1=週一…7=週日，例如週五沒課為 [5]"),
+          targetCredits: z.number().int().min(1).max(30).optional().describe("目標學分，預設約 15"),
+          tags: z.array(z.string()).optional().describe('偏好的快速標籤，例如 ["不點名"]'),
+          prefer: z
+            .enum(["sweet", "easy", "quality"])
+            .optional()
+            .describe("排序偏好：sweet=甜、easy=涼/輕鬆、quality=收穫"),
+          avoidCrossCampus: z.boolean().optional().describe("是否避開跨校區緊接，預設 true"),
+        }),
+        execute: async (args) => buildScheduleForAI(args),
       }),
     },
   });

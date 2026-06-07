@@ -13,12 +13,13 @@ import {
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import { AiCourseCards, type AiCard } from "@/components/ai-course-cards";
+import { AiScheduleResult, type AiSchedule } from "@/components/ai-schedule-result";
 
 const SUGGESTIONS = [
   "推薦輕鬆又有收穫的通識課",
   "不點名、又好加簽的課有哪些？",
   "比較「演算法」不同老師的評價",
-  "這學期還好選上的甜課推薦",
+  "我是數學系,排一份週五沒課的課表",
 ];
 
 export function AiChat() {
@@ -70,7 +71,11 @@ export function AiChat() {
                     if (part.type === "text")
                       return <MessageResponse key={i}>{part.text}</MessageResponse>;
                     if (part.type.startsWith("tool-")) {
-                      const out = (part as { output?: { courses?: AiCard[]; courseKey?: string } }).output;
+                      const out = (part as {
+                        output?: { kind?: string; courses?: AiCard[]; courseKey?: string };
+                      }).output;
+                      if (out?.kind === "schedule")
+                        return <AiScheduleResult key={i} schedule={out as unknown as AiSchedule} />;
                       let cards: AiCard[] | null = null;
                       if (out?.courses && out.courses.length > 0) cards = out.courses;
                       else if (out?.courseKey) cards = [out as AiCard];
