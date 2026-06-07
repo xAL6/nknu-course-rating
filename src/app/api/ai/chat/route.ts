@@ -170,6 +170,11 @@ export async function POST(req: Request) {
   const blocked = guardReason(messages);
   if (blocked) return cannedRefusal(blocked);
 
+  // Deterministic ceiling on search calls — guarantees the model can't loop into
+  // the step cap without answering, no matter how eager it gets.
+  let searchCalls = 0;
+  const SEARCH_CAP = 3;
+
   const result = streamText({
     model: deepseek(process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"),
     system: SYSTEM,
@@ -188,6 +193,12 @@ export async function POST(req: Request) {
             .describe('只回傳同時帶有這些快速標籤的課，例如 ["不點名","好加簽"]'),
         }),
         execute: async ({ query, department, tags }) => {
+          if (++searchCalls > SEARCH_CAP) {
+            return {
+              limitReached: true,
+              note: "已搜尋多次，請『直接用前面已經拿到的搜尋結果』作答，不要再呼叫任何工具。",
+            };
+          }
           const courses = await retrieveCourses(query, department, { tags });
           return { count: courses.length, courses };
         },
