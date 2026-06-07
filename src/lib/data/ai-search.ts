@@ -128,9 +128,15 @@ export async function retrieveCourses(
   const result = await listCourses({ q: query, dept: department, pageSize: tags.length ? 36 : 12 });
   const sums = await fetchSummaries(result.items.map((c) => c.courseKey).filter(Boolean));
 
-  let courses = result.items.map((c) => toAiResult(c, sums.get(c.courseKey)));
+  const courses = result.items.map((c) => toAiResult(c, sums.get(c.courseKey)));
   if (tags.length) {
-    courses = courses.filter((c) => tags.every((t) => (c.tags[t] ?? 0) > 0)).slice(0, 12);
+    const tagged = courses.filter((c) => tags.every((t) => (c.tags[t] ?? 0) > 0));
+    // Few courses carry tags (UGC is sparse). Returning only tagged hits makes the
+    // model keep re-searching; so when tagged results are thin, also include the
+    // top keyword matches (the model can see which actually carry the tag).
+    if (tagged.length >= 4) return tagged.slice(0, 12);
+    const rest = courses.filter((c) => !tagged.includes(c)).slice(0, 10);
+    return [...tagged, ...rest].slice(0, 12);
   }
   return courses;
 }
