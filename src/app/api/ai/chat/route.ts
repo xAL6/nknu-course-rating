@@ -60,7 +60,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: deepseek("deepseek-chat"),
+    model: deepseek(process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"),
     system: SYSTEM,
     messages: await convertToModelMessages(messages),
     stopWhen: stepCountIs(6),
