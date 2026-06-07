@@ -140,7 +140,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
             const tReviews = reviewsByTk.get(sec.teacherKey) ?? [];
             const enroll = avgFillRate(sec.offerings);
             return (
-              <div key={sec.teacherKey || "tbd"} className="glass rounded-lg p-5">
+              <div key={sec.teacherKey || "tbd"} className="glass rounded-2xl p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="text-base font-semibold">
                     {sec.teachers.length
@@ -169,11 +169,12 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                   </Button>
                 </div>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
                   <RatingSummaryBars summary={sec.summary} />
                   {sec.summary && sec.summary.reviewCount > 0 && (
-                    <div className="text-center text-xs text-mute">
-                      {sec.summary.reviewCount} 則評價
+                    <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-secondary/40 px-5 py-3 text-center">
+                      <span className="text-2xl font-semibold tabular-nums text-ink">{sec.summary.reviewCount}</span>
+                      <span className="text-xs text-mute">則評價</span>
                     </div>
                   )}
                 </div>
@@ -196,7 +197,9 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                 />
 
                 {/* This teacher's offerings */}
-                <div className="mt-4 space-y-1.5 border-t border-hairline pt-3">
+                <div className="mt-5 border-t border-hairline pt-4">
+                  <h3 className="mb-2.5 text-sm font-semibold text-body">歷年開課紀錄</h3>
+                  <div className="space-y-1.5">
                   {sec.offerings.map((o) => (
                     <div
                       key={o.syllabusNo ?? `${o.semesterId}-${o.classCode}`}
@@ -244,51 +247,77 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                       </div>
                     </div>
                   ))}
+                  </div>
                 </div>
 
                 {/* This teacher's reviews */}
                 {tReviews.length > 0 && (
-                  <div className="mt-4 space-y-3 border-t border-hairline pt-3">
-                    {tReviews.map((r) => (
-                      <article key={r.id}>
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium">{r.displayName}</span>
-                            {r.semesterId && (
-                              <span className="font-mono text-xs text-mute">{semLabel(r.semesterId)}</span>
-                            )}
-                          </div>
-                          <ReviewVotes reviewId={r.id} courseKey={course.courseKey} likeCount={r.likeCount} usefulCount={r.usefulCount} />
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                          {RATING_DIMENSIONS.map((d) => {
-                            const v = r[d.key] as number | null;
-                            return (
-                              <span key={d.key} className="text-body">
-                                {d.label}
-                                <span className="ml-1 font-mono" style={{ color: d.color }}>
-                                  {v ?? "—"}
-                                </span>
+                  <div className="mt-6 border-t border-hairline pt-5">
+                    <h3 className="flex items-center gap-1.5 text-sm font-semibold text-body">
+                      <MessageSquare className="size-4" /> 學生評價 · {tReviews.length} 則
+                    </h3>
+                    <div className="mt-4 space-y-4">
+                      {tReviews.map((r) => (
+                        <article
+                          key={r.id}
+                          className="rounded-xl border border-hairline bg-secondary/40 p-4 sm:p-5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-body"
+                                aria-hidden
+                              >
+                                {r.displayName.slice(0, 1)}
                               </span>
-                            );
-                          })}
-                        </div>
-                        {r.tags.length > 0 && <TagChips tags={r.tags} className="mt-2" />}
-                        {r.shortComment && <p className="mt-2 text-sm font-medium">{r.shortComment}</p>}
-                        {r.body && <p className="mt-1 text-sm whitespace-pre-wrap text-body">{r.body}</p>}
-                        <ReviewComments
-                          reviewId={r.id}
-                          courseKey={course.courseKey}
-                          initial={r.comments}
-                          canComment={!!user?.allowed}
-                        />
-                      </article>
-                    ))}
+                              <div className="leading-tight">
+                                <div className="text-sm font-medium text-ink">{r.displayName}</div>
+                                {r.semesterId && (
+                                  <div className="font-mono text-xs text-mute">{semLabel(r.semesterId)} 修課</div>
+                                )}
+                              </div>
+                            </div>
+                            <ReviewVotes reviewId={r.id} courseKey={course.courseKey} likeCount={r.likeCount} usefulCount={r.usefulCount} />
+                          </div>
+
+                          <div className="mt-3.5 flex flex-wrap gap-2">
+                            {RATING_DIMENSIONS.map((d) => {
+                              const v = r[d.key] as number | null;
+                              return (
+                                <span
+                                  key={d.key}
+                                  className="inline-flex items-baseline gap-1.5 rounded-md bg-background/50 px-2.5 py-1"
+                                >
+                                  <span className="text-xs text-mute">{d.label}</span>
+                                  <span className="font-mono text-sm font-semibold" style={{ color: d.color }}>
+                                    {v ?? "—"}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                          </div>
+
+                          {r.tags.length > 0 && <TagChips tags={r.tags} className="mt-3" />}
+                          {r.shortComment && (
+                            <p className="mt-3.5 text-[15px] font-semibold leading-snug text-ink">{r.shortComment}</p>
+                          )}
+                          {r.body && (
+                            <p className="mt-1.5 text-[15px] leading-relaxed whitespace-pre-wrap text-body">{r.body}</p>
+                          )}
+                          <ReviewComments
+                            reviewId={r.id}
+                            courseKey={course.courseKey}
+                            initial={r.comments}
+                            canComment={!!user?.allowed}
+                          />
+                        </article>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {tReviews.length === 0 && (
-                  <p className="mt-3 flex items-center gap-1.5 border-t border-hairline pt-3 text-xs text-mute">
-                    <MessageSquare className="size-3" /> 這位老師的版本尚無評價,成為第一個分享的人。
+                  <p className="mt-4 flex items-center gap-1.5 border-t border-hairline pt-4 text-sm text-mute">
+                    <MessageSquare className="size-4" /> 這位老師的版本尚無評價,成為第一個分享的人。
                   </p>
                 )}
               </div>
