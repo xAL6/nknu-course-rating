@@ -76,6 +76,11 @@ export async function getTeacher(name: string): Promise<TeacherDetail | null> {
         loading: avg("avg_loading"),
         quality: avg("avg_quality"),
         grading: avg("avg_grading"),
+        tagCounts: withReviews.reduce((acc, s) => {
+          const tc = (s.tag_counts as Record<string, number> | null) ?? {};
+          for (const [k, v] of Object.entries(tc)) acc[k] = (acc[k] ?? 0) + (v ?? 0);
+          return acc;
+        }, {} as Record<string, number>),
       };
     }
   }

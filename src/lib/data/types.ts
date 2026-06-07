@@ -36,6 +36,8 @@ export type RatingSummary = {
   loading: number | null;
   quality: number | null;
   grading: number | null;
+  /** Aggregated quick-tag counts for this (course, teacher), e.g. { 可加簽: 12 }. */
+  tagCounts: Record<string, number>;
 };
 
 /** A logical course (grouped across offerings by course_key). */
