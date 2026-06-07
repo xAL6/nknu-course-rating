@@ -60,7 +60,7 @@ export default async function MePage() {
                 <Link
                   key={r.id}
                   href={c ? `/course/${encodeURIComponent(c.course_key)}` : "#"}
-                  className="elev-1 hover:elev-2 block rounded-md bg-canvas px-4 py-3 transition-shadow"
+                  className="glass-soft glass-interactive block rounded-md px-4 py-3"
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{c?.name}</span>
@@ -88,7 +88,7 @@ export default async function MePage() {
                 <Link
                   key={b.course_id}
                   href={c ? `/course/${encodeURIComponent(c.course_key)}` : "#"}
-                  className="elev-1 hover:elev-2 flex items-center gap-2 rounded-md bg-canvas px-4 py-3 transition-shadow"
+                  className="glass-soft glass-interactive flex items-center gap-2 rounded-md px-4 py-3"
                 >
                   <span className="font-mono text-xs text-mute">{c?.course_code}</span>
                   <span className="truncate font-medium">{c?.name}</span>
@@ -103,5 +103,5 @@ export default async function MePage() {
 }
 
 function Empty({ text }: { text: string }) {
-  return <div className="rounded-lg bg-canvas-soft p-6 text-center text-sm text-mute">{text}</div>;
+  return <div className="glass rounded-lg p-6 text-center text-sm text-mute">{text}</div>;
 }

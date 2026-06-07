@@ -63,7 +63,7 @@ export function CoursesFilter({
     update({ ...patch, dept: undefined, classCode: undefined });
 
   return (
-    <div className="elev-1 space-y-3 rounded-lg bg-canvas p-4">
+    <div className="glass space-y-3 rounded-lg p-4">
       {/* 日夜間 + 上課地點 */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <Row label="日夜間">
@@ -206,7 +206,7 @@ export function CoursesFilter({
           name="q"
           defaultValue={current.q ?? ""}
           placeholder="搜尋課程名稱、教師或代號…"
-          className="h-10 w-full rounded-md border border-hairline bg-canvas pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="glass-soft h-10 w-full rounded-md pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-link/30"
         />
       </form>
     </div>

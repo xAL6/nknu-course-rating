@@ -27,7 +27,7 @@ export default async function LeaderboardPage() {
               contributors.map((c, i) => (
                 <div
                   key={c.displayName + i}
-                  className="elev-1 flex items-center gap-3 rounded-md bg-canvas px-4 py-3"
+                  className="glass-soft flex items-center gap-3 rounded-md px-4 py-3"
                 >
                   <span className="w-6 text-center font-mono text-sm text-mute">{i + 1}</span>
                   <span className="flex-1 font-medium">{c.displayName}</span>
@@ -53,7 +53,7 @@ export default async function LeaderboardPage() {
                 <Link
                   key={`${t.courseKey}|${t.teacherKey}`}
                   href={`/course/${encodeURIComponent(t.courseKey)}?t=${encodeURIComponent(t.teacherKey)}`}
-                  className="elev-1 hover:elev-2 flex items-center gap-3 rounded-md bg-canvas px-4 py-3 transition-shadow"
+                  className="glass-soft glass-interactive flex items-center gap-3 rounded-md px-4 py-3"
                 >
                   <span className="w-6 text-center font-mono text-sm text-mute">{i + 1}</span>
                   <div className="min-w-0 flex-1">
@@ -78,6 +78,6 @@ export default async function LeaderboardPage() {
 
 function Empty({ text }: { text: string }) {
   return (
-    <div className="rounded-lg bg-canvas-soft p-8 text-center text-sm text-mute">{text}</div>
+    <div className="glass rounded-lg p-8 text-center text-sm text-mute">{text}</div>
   );
 }

@@ -54,7 +54,7 @@ export function AiChat() {
                   <button
                     key={s}
                     onClick={() => ask(s)}
-                    className="elev-1 hover:elev-2 rounded-lg bg-canvas px-3 py-2.5 text-left text-sm text-body transition-shadow"
+                    className="glass-soft glass-interactive rounded-lg px-3 py-2.5 text-left text-sm text-body"
                   >
                     {s}
                   </button>
@@ -104,7 +104,7 @@ export function AiChat() {
           e.preventDefault();
           ask(input);
         }}
-        className="mt-3 flex items-end gap-2 rounded-2xl border border-hairline bg-canvas p-2 focus-within:ring-2 focus-within:ring-ring"
+        className="glass mt-3 flex items-end gap-2 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-ring"
       >
         <textarea
           value={input}

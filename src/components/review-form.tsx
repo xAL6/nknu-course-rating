@@ -108,7 +108,7 @@ export function ReviewForm({
           name="shortComment"
           maxLength={100}
           placeholder="例：甜涼好過，但要交期末報告"
-          className="mt-1.5 h-10 w-full rounded-md border border-hairline bg-canvas px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="glass-soft mt-1.5 h-10 w-full rounded-md px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-link/30"
         />
       </div>
 

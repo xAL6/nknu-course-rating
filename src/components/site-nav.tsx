@@ -15,7 +15,7 @@ const LINKS = [
 
 export function SiteNav() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-hairline bg-canvas/80 backdrop-blur-md dark:bg-canvas/70">
+    <header className="glass-strong sticky top-0 z-50 w-full">
       <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-3 px-4 sm:gap-4 sm:px-6">
         <MobileNav />
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">

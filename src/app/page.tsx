@@ -18,7 +18,7 @@ export default async function Home() {
           className="mesh-gradient pointer-events-none absolute inset-x-0 -top-32 h-[520px] opacity-40 dark:opacity-30"
         />
         <div className="relative mx-auto max-w-[1400px] px-6 pt-24 pb-20 text-center sm:pt-28">
-          <span className="animate-rise inline-flex items-center gap-1.5 rounded-full border border-hairline bg-canvas/80 px-3 py-1 font-mono text-xs text-body backdrop-blur">
+          <span className="glass-strong animate-rise inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-xs text-body">
             <span className="spectrum-bar size-2 rounded-full" /> 高師大・選課評價
           </span>
           <h1
@@ -47,7 +47,7 @@ export default async function Home() {
               <input
                 name="q"
                 placeholder="搜尋課程、教師或代號…"
-                className="h-13 w-full rounded-full border border-hairline bg-canvas pr-4 pl-10 text-sm shadow-sm outline-none transition focus-visible:border-link focus-visible:ring-4 focus-visible:ring-link/15"
+                className="glass h-13 w-full rounded-full pr-4 pl-10 text-sm text-ink outline-none transition placeholder:text-mute focus-visible:ring-4 focus-visible:ring-link/20"
               />
             </div>
             <Button type="submit" size="lg" className="h-13 rounded-full px-7 text-sm">
@@ -114,7 +114,7 @@ export default async function Home() {
               <Link
                 key={`${t.courseKey}|${t.teacherKey}`}
                 href={`/course/${encodeURIComponent(t.courseKey)}`}
-                className="elev-1 card-pop group relative flex items-center gap-3 overflow-hidden rounded-xl bg-canvas p-4"
+                className="glass-soft glass-interactive group relative flex items-center gap-3 overflow-hidden rounded-xl p-4"
               >
                 <span
                   className="absolute inset-y-0 left-0 w-1"
@@ -145,7 +145,7 @@ export default async function Home() {
             ))}
           </div>
         ) : (
-          <div className="mt-5 overflow-hidden rounded-2xl border border-hairline bg-canvas-soft">
+          <div className="glass mt-5 overflow-hidden rounded-2xl">
             <div className="spectrum-bar h-1" aria-hidden />
             <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
               <TrendingUp className="size-7 text-mute" />
@@ -195,7 +195,7 @@ function FeatureCard({
   color: string;
 }) {
   return (
-    <div className="elev-2 card-pop relative h-full overflow-hidden rounded-2xl bg-canvas p-6">
+    <div className="glass card-pop relative h-full overflow-hidden rounded-2xl p-6">
       <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} aria-hidden />
       <div
         className="flex size-11 items-center justify-center rounded-xl"

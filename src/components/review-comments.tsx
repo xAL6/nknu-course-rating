@@ -70,7 +70,7 @@ export function ReviewComments({
                 rows={2}
                 maxLength={2000}
                 placeholder="回覆這則評價…（⌘/Ctrl + Enter 送出）"
-                className="flex-1 resize-none rounded-md border border-hairline bg-canvas px-3 py-2 text-sm outline-none focus:border-link"
+                className="glass-soft flex-1 resize-none rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-link/30"
               />
               <button
                 onClick={submit}

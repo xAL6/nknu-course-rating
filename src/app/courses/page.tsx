@@ -54,7 +54,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
       </div>
 
       {result.items.length === 0 ? (
-        <div className="mt-12 rounded-lg bg-canvas-soft p-12 text-center">
+        <div className="glass mt-12 rounded-lg p-12 text-center">
           <p className="text-body">找不到符合條件的課程。</p>
           <Button render={<Link href="/courses" />} nativeButton={false} variant="outline" className="mt-4 rounded-full">
             清除篩選

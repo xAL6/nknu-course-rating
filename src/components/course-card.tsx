@@ -37,8 +37,8 @@ export function CourseCard({ course, index = 0 }: { course: CourseGroup; index?:
         boxShadow: `0 18px 46px -20px ${accent}66`,
         transition: { type: "spring", stiffness: 340, damping: 22 },
       }}
-      style={{ borderColor: "var(--hairline)", ["--accent" as string]: accent }}
-      className="group relative flex flex-col rounded-2xl border bg-canvas p-5"
+      style={{ ["--accent" as string]: accent }}
+      className="group glass-soft glass-interactive relative flex flex-col rounded-2xl p-5"
     >
       {/* whole card navigates */}
       <Link

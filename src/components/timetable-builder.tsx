@@ -254,7 +254,7 @@ function AddPanel({ semester }: { semester: string | null }) {
   }, [q, semester]);
 
   return (
-    <div className="elev-2 rounded-lg bg-canvas p-4">
+    <div className="glass rounded-lg p-4">
       <h2 className="text-sm font-medium">加入課程</h2>
       <div className="relative mt-2">
         <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-mute" />
@@ -262,7 +262,7 @@ function AddPanel({ semester }: { semester: string | null }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="搜尋課程或教師…"
-          className="h-9 w-full rounded-md border border-hairline bg-canvas pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="glass-soft h-9 w-full rounded-md pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-link/30"
         />
       </div>
       <div className="mt-2 max-h-72 space-y-1 overflow-y-auto">
@@ -308,7 +308,7 @@ function AddPanel({ semester }: { semester: string | null }) {
 
 function SelectedList({ courses }: { courses: TimetableCourse[] }) {
   return (
-    <div className="elev-2 rounded-lg bg-canvas p-4">
+    <div className="glass rounded-lg p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium">已選 {courses.length} 門</h2>
         {courses.length > 0 && (

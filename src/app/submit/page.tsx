@@ -36,7 +36,7 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">撰寫評價・{course.name}</h1>
 
       {!user ? (
-        <div className="mt-8 rounded-lg bg-canvas-soft p-8 text-center">
+        <div className="glass mt-8 rounded-lg p-8 text-center">
           <p className="text-sm text-body">請先以高師大信箱登入才能撰寫評價。</p>
           <Button render={<Link href="/auth" />} nativeButton={false} className="mt-4 rounded-full">
             前往登入

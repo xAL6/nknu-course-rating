@@ -136,7 +136,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
           {sections.map((sec) => {
             const tReviews = reviewsByTk.get(sec.teacherKey) ?? [];
             return (
-              <div key={sec.teacherKey || "tbd"} className="elev-2 rounded-lg bg-canvas p-5">
+              <div key={sec.teacherKey || "tbd"} className="glass rounded-lg p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="text-base font-semibold">
                     {sec.teachers.length
