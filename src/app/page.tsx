@@ -32,16 +32,11 @@ export default async function Home() {
     <>
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
-        <div className="spectrum-bar absolute inset-x-0 top-0 z-10 h-0.5" aria-hidden />
-        <div
-          aria-hidden
-          className="mesh-gradient pointer-events-none absolute inset-x-0 -top-40 h-[620px] opacity-50 dark:opacity-40"
-        />
-        <div className="relative mx-auto grid max-w-[1240px] items-center gap-12 px-6 pt-24 pb-16 lg:grid-cols-[1.05fr_0.95fr] lg:pt-28">
+        <div className="relative mx-auto grid max-w-[1240px] items-center gap-12 px-6 pt-20 pb-16 lg:grid-cols-[1.05fr_0.95fr] lg:pt-24">
           {/* copy */}
           <div className="text-center lg:text-left">
             <span className="glass-strong animate-rise inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-xs text-body">
-              <span className="spectrum-bar size-2 rounded-full" /> 高師大・選課評價
+              <span className="size-2 rounded-full" style={{ backgroundColor: "var(--rate-sweet)" }} /> 高師大・選課評價
             </span>
             <h1
               className="animate-rise mt-6 text-[2.6rem] leading-[1.04] font-semibold tracking-tight text-balance sm:text-6xl"
@@ -49,7 +44,7 @@ export default async function Home() {
             >
               選課前,先看看
               <br />
-              <span className="text-spectrum">學長姐</span>怎麼說。
+              <span style={{ color: "var(--rate-sweet)" }}>學長姐</span>怎麼說。
             </h1>
             <p
               className="animate-rise mx-auto mt-5 max-w-md text-lg text-body text-pretty lg:mx-0"
@@ -101,9 +96,8 @@ export default async function Home() {
           {/* floating product preview */}
           <Reveal delay={0.15} className="hidden lg:block">
             <div className="relative">
-              <div aria-hidden className="absolute -inset-6 -z-10 opacity-60 blur-2xl spectrum-bar rounded-[40px]" style={{ opacity: 0.18 }} />
-              {/* stacked back cards */}
-              <div className="glass-soft absolute -top-5 right-6 left-10 h-24 rounded-2xl opacity-50" aria-hidden />
+              {/* stacked back card for depth */}
+              <div className="glass-soft absolute -top-4 right-6 left-10 h-24 rounded-2xl opacity-60" aria-hidden />
               <div className="glass animate-float relative rounded-3xl p-6">
                 <div className="flex items-start justify-between">
                   <div>
