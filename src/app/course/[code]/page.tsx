@@ -8,7 +8,6 @@ import { EnrollmentBadge } from "@/components/enrollment-badge";
 import { TagChips } from "@/components/tag-chips";
 import { ReviewVotes } from "@/components/review-votes";
 import { ReviewComments } from "@/components/review-comments";
-import { ReviewSummaryAI } from "@/components/review-summary-ai";
 import { OfferingHistory } from "@/components/offering-history";
 import { BackButton } from "@/components/back-button";
 import { SEMESTER_TERMS, RATING_DIMENSIONS } from "@/lib/config";
@@ -177,12 +176,6 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                 {sec.summary && Object.keys(sec.summary.tagCounts).length > 0 && (
                   <TagChips counts={sec.summary.tagCounts} max={8} className="mt-3" />
                 )}
-
-                <ReviewSummaryAI
-                  courseKey={course.courseKey}
-                  teacherKey={sec.teacherKey}
-                  reviewCount={sec.summary?.reviewCount ?? 0}
-                />
 
                 {/* This teacher's offerings */}
                 <OfferingHistory

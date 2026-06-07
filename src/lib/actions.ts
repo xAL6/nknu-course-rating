@@ -2,15 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { generateText } from "ai";
-import { deepseek } from "@ai-sdk/deepseek";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getReviews } from "@/lib/data/reviews";
 import {
   isAllowedEmail,
   randomDisplayName,
-  RATING_DIMENSIONS,
   REVIEW_TAG_VALUES,
   MAX_REVIEW_TAGS,
 } from "@/lib/config";
@@ -231,61 +227,3 @@ export async function addComment(reviewId: string, body: string, courseKey: stri
   return { ok: true };
 }
 
-export type ReviewSummaryResult =
-  | { status: "ok"; summary: string; cached: boolean }
-  | { status: "too_few" }
-  | { status: "disabled" };
-
-/**
- * AI TL;DR of a (course, teacher)'s reviews — pros/cons distilled. Cached in
- * course_rating_summary.ai_summary; regenerated only when newer reviews exist.
- */
-export async function getReviewSummary(
-  courseKey: string,
-  teacherKey: string,
-): Promise<ReviewSummaryResult> {
-  if (!process.env.DEEPSEEK_API_KEY) return { status: "disabled" };
-  const supabase = await createClient();
-
-  const all = await getReviews(courseKey);
-  const reviews = all.filter((r) => r.teacherKey === teacherKey);
-  if (reviews.length < 2) return { status: "too_few" };
-
-  const latestAt = reviews
-    .map((r) => r.createdAt)
-    .sort((a, b) => b.localeCompare(a))[0];
-
-  const { data: row } = await supabase
-    .from("course_rating_summary")
-    .select("ai_summary, ai_summary_at")
-    .eq("course_key", courseKey)
-    .eq("teacher_key", teacherKey)
-    .maybeSingle();
-
-  if (row?.ai_summary && row.ai_summary_at && row.ai_summary_at >= latestAt) {
-    return { status: "ok", summary: row.ai_summary, cached: true };
-  }
-
-  // Build a compact, grounded prompt from the real reviews.
-  const lines = reviews.map((r) => {
-    const dims = RATING_DIMENSIONS.map((d) => `${d.label}${(r[d.key as keyof typeof r] as number | null) ?? "—"}`).join(" ");
-    const text = [r.shortComment, r.body].filter(Boolean).join(" / ");
-    return `- [${dims}] ${text || "(無文字評論)"}`;
-  });
-
-  const { text } = await generateText({
-    model: deepseek(process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"),
-    system:
-      "你是課程評價摘要助手。根據學生對某位老師某門課的真實評價，寫出客觀、精簡的繁體中文摘要。" +
-      "不可捏造未提及的資訊。輸出格式：先一句總結，接著「優點」與「注意」兩個 Markdown 條列（各 2–4 點）。",
-    prompt: `評分面向 1–5（甜度=給分甜、涼度=輕鬆、收穫=學到多少/內容紮實）。\n以下是 ${reviews.length} 則評價：\n${lines.join("\n")}`,
-  });
-
-  await supabase
-    .from("course_rating_summary")
-    .update({ ai_summary: text, ai_summary_at: new Date().toISOString() })
-    .eq("course_key", courseKey)
-    .eq("teacher_key", teacherKey);
-
-  return { status: "ok", summary: text, cached: false };
-}
