@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-display), var(--font-sans);
+  --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -139,17 +139,20 @@
   --rate-quality: #7928ca;
   --rate-grading: #0070f3;
 
-  /* clean light surfaces (NTU-Rating / NCKU-Hub inspired: warm, simple, readable) */
-  --ambient-base: #f7f5f1;
-  --ambient-blob-opacity: 0.05;
-  --ambient-grain-opacity: 0;
-  --glass-bg: #ffffff;
-  --glass-bg-strong: #ffffff;
-  --glass-bg-soft: #ffffff;
-  --glass-border: #ececec;
-  --glass-highlight: transparent;
-  --glass-sheen: transparent;
-  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 26px -18px rgb(0 0 0 / 0.12);
+  /* refined light glass (toggle) */
+  --ambient-base: #eceef4;
+  --ambient-blob-opacity: 0.24;
+  --ambient-grain-opacity: 0.015;
+  --glass-bg: color-mix(in oklch, white 58%, transparent);
+  --glass-bg-strong: color-mix(in oklch, white 74%, transparent);
+  --glass-bg-soft: color-mix(in oklch, white 62%, transparent);
+  --glass-border: color-mix(in oklch, #0a0a0a 8%, transparent);
+  --glass-highlight: color-mix(in oklch, white 92%, transparent);
+  --glass-sheen: color-mix(in oklch, white 60%, transparent);
+  --glass-shadow: 0 18px 42px -24px rgb(0 0 0 / 0.18);
+  --glass-blur: 18px;
+  --glass-blur-strong: 28px;
+  --glass-blur-soft: 12px;
 }
 
 .dark {
@@ -196,17 +199,20 @@
   --link: #3291ff;
   --link-deep: #0070f3;
 
-  /* clean dark surfaces (available via toggle) */
-  --ambient-base: #0c0c0f;
-  --ambient-blob-opacity: 0.08;
-  --ambient-grain-opacity: 0;
-  --glass-bg: #161619;
-  --glass-bg-strong: #18181c;
-  --glass-bg-soft: #151518;
-  --glass-border: #2a2a30;
-  --glass-highlight: transparent;
-  --glass-sheen: transparent;
-  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 30px -18px rgb(0 0 0 / 0.55);
+  /* refined dark glass (default) */
+  --ambient-base: #08080c;
+  --ambient-blob-opacity: 0.4;
+  --ambient-grain-opacity: 0.04;
+  --glass-bg: color-mix(in oklch, #16161d 50%, transparent);
+  --glass-bg-strong: color-mix(in oklch, #131319 66%, transparent);
+  --glass-bg-soft: color-mix(in oklch, #17171f 56%, transparent);
+  --glass-border: color-mix(in oklch, white 16%, transparent);
+  --glass-highlight: color-mix(in oklch, white 22%, transparent);
+  --glass-sheen: color-mix(in oklch, white 10%, transparent);
+  --glass-shadow: 0 18px 50px -22px rgb(0 0 0 / 0.62);
+  --glass-blur: 20px;
+  --glass-blur-strong: 30px;
+  --glass-blur-soft: 14px;
 }
 
 @layer base {
@@ -365,16 +371,33 @@
     overflow: hidden;
     background: var(--ambient-base);
   }
-  /* one faint warm glow at the top — atmosphere without the rainbow */
+  /* elegant muted aurora (desaturated indigo/teal/plum — not a bright rainbow) */
   .ambient::before {
     content: "";
     position: absolute;
-    inset: 0;
+    inset: -20%;
     background:
-      radial-gradient(60% 45% at 50% -8%, color-mix(in oklch, var(--rate-grading) 60%, transparent) 0%, transparent 70%),
-      radial-gradient(45% 30% at 92% 0%, color-mix(in oklch, var(--rate-sweet) 45%, transparent) 0%, transparent 70%);
-    filter: blur(40px);
+      radial-gradient(46% 46% at 16% 12%, #3a3a8c 0%, transparent 62%),
+      radial-gradient(42% 42% at 86% 14%, #1f6470 0%, transparent 62%),
+      radial-gradient(52% 52% at 78% 84%, #5e2a5c 0%, transparent 64%),
+      radial-gradient(40% 40% at 28% 88%, #2a4d7a 0%, transparent 64%);
+    filter: blur(70px) saturate(0.85);
     opacity: var(--ambient-blob-opacity);
+    animation: ambient-drift 40s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes ambient-drift {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(-3%, 2%, 0) scale(1.1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ambient::before {
+      animation: none;
+    }
   }
   .ambient::after {
     content: "";
@@ -385,17 +408,33 @@
     mix-blend-mode: overlay;
   }
 
-  /* ── Clean card surfaces (the old .glass names, now simple light/dark cards) ── */
+  /* ── Frosted glass surfaces ── */
   .glass,
+  .glass-strong,
   .glass-soft {
-    background: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    box-shadow:
+      var(--glass-shadow),
+      inset 0 1px 0 0 var(--glass-highlight);
+  }
+  .glass {
+    background: linear-gradient(160deg, var(--glass-sheen), transparent 50%), var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.7);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.7);
   }
   .glass-strong {
-    background: var(--glass-bg-strong);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    background: linear-gradient(160deg, var(--glass-sheen), transparent 54%), var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.9);
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.9);
+  }
+  .glass-soft {
+    background: linear-gradient(160deg, var(--glass-sheen), transparent 50%), var(--glass-bg-soft);
+  }
+  @media (min-width: 641px) {
+    .glass-soft {
+      backdrop-filter: blur(var(--glass-blur-soft)) saturate(1.5);
+      -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(1.5);
+    }
   }
   .glass-interactive {
     transition:
@@ -406,6 +445,23 @@
   .glass-interactive:hover {
     box-shadow:
       var(--glass-shadow),
-      0 14px 34px -18px rgb(0 0 0 / 0.18);
+      inset 0 1px 0 0 var(--glass-highlight),
+      0 20px 48px -22px rgb(0 0 0 / 0.5);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .glass-strong,
+    .glass-soft {
+      background: var(--card);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass,
+    .glass-strong,
+    .glass-soft {
+      background: var(--card);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
   }
 }

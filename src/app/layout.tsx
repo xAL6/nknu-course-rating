@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
+import { Noto_Sans_TC, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteNav } from "@/components/site-nav";
@@ -7,9 +7,13 @@ import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/config";
 
-const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
+// One cohesive Traditional-Chinese + Latin family for all UI text (避免中英字體混搭看起來亂).
+const sans = Noto_Sans_TC({
+  variable: "--font-sans",
+  weight: ["400", "500", "700", "900"],
+  preload: false,
+});
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-const display = Bricolage_Grotesque({ variable: "--font-display", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: `${SITE_NAME}`, template: `%s・${SITE_NAME}` },
@@ -35,11 +39,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html
       lang="zh-Hant"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
+      className={`${sans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-transparent">
         <div className="ambient" aria-hidden />
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <SiteNav />
           <main className="flex-1">{children}</main>
           <SiteFooter />

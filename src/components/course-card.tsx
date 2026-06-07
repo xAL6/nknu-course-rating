@@ -5,7 +5,6 @@ import { motion } from "motion/react";
 import { AddToTimetable } from "@/components/add-to-timetable";
 import { EnrollmentBadge } from "@/components/enrollment-badge";
 import { formatSlots } from "@/lib/schedule";
-import { RATING_DIMENSIONS } from "@/lib/config";
 import type { CourseGroup } from "@/lib/data/types";
 
 const ACCENTS = ["#ff0080", "#0070f3", "#00dfd8", "#7928ca", "#f5a623"];
@@ -70,27 +69,18 @@ export function CourseCard({ course, index = 0 }: { course: CourseGroup; index?:
         </h3>
         {course.nameEn && <p className="mt-0.5 truncate text-xs text-mute">{course.nameEn}</p>}
 
-        {meta && <p className="mt-3 truncate text-xs text-body">{meta}</p>}
-
-        {/* rating — slim 5-segment spectrum (the brand signature) */}
-        <div className="mt-4">
-          <div className="flex h-1.5 gap-1">
-            {RATING_DIMENSIONS.map((d) => (
-              <span
-                key={d.key}
-                className="flex-1 rounded-full transition-opacity"
-                style={{ backgroundColor: d.color, opacity: hasRating ? 1 : 0.28 }}
-              />
-            ))}
-          </div>
-          <p className="mt-1.5 text-[11px] text-mute">
-            {hasRating ? `${course.summary!.reviewCount} 則評價` : "尚無評價"}
-          </p>
-        </div>
+        {meta && <p className="mt-2.5 truncate text-xs text-mute">{meta}</p>}
       </div>
 
-      <div className="relative z-10 mt-4 flex items-center justify-between border-t border-hairline pt-3">
-        <EnrollmentBadge count={latest?.enrollCount} cap={latest?.enrollCap} />
+      <div className="relative z-10 mt-4 flex items-center justify-between gap-2 border-t border-[var(--glass-border)] pt-3">
+        <span className="flex items-center gap-2 text-xs text-mute">
+          {hasRating ? (
+            <span className="font-medium text-body">★ {course.summary!.reviewCount} 則</span>
+          ) : (
+            <span>尚無評價</span>
+          )}
+          <EnrollmentBadge count={latest?.enrollCount} cap={latest?.enrollCap} />
+        </span>
         {canSchedule && latest && (
           <AddToTimetable
             course={{
