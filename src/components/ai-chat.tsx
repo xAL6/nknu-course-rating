@@ -12,12 +12,13 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import { AiCourseCards, type AiCard } from "@/components/ai-course-cards";
 
 const SUGGESTIONS = [
   "推薦輕鬆又有收穫的通識課",
-  "資工相關、甜度高的選修有哪些？",
-  "幫我比較教某門課的不同老師",
-  "想找週五沒課,先給我排課建議",
+  "不點名、又好加簽的課有哪些？",
+  "比較「演算法」不同老師的評價",
+  "這學期還好選上的甜課推薦",
 ];
 
 export function AiChat() {
@@ -68,12 +69,18 @@ export function AiChat() {
                   {m.parts.map((part, i) => {
                     if (part.type === "text")
                       return <MessageResponse key={i}>{part.text}</MessageResponse>;
-                    if (part.type.startsWith("tool-"))
+                    if (part.type.startsWith("tool-")) {
+                      const out = (part as { output?: { courses?: AiCard[]; courseKey?: string } }).output;
+                      let cards: AiCard[] | null = null;
+                      if (out?.courses && out.courses.length > 0) cards = out.courses;
+                      else if (out?.courseKey) cards = [out as AiCard];
+                      if (cards) return <AiCourseCards key={i} courses={cards} />;
                       return (
                         <span key={i} className="flex items-center gap-1.5 text-xs text-mute">
                           <Search className="size-3" /> 搜尋課程資料庫…
                         </span>
                       );
+                    }
                     return null;
                   })}
                 </MessageContent>
