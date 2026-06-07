@@ -12,7 +12,6 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
-import { AiCourseCards, type AiCard } from "@/components/ai-course-cards";
 import { AiScheduleResult, type AiSchedule } from "@/components/ai-schedule-result";
 
 const SUGGESTIONS = [
@@ -71,20 +70,18 @@ export function AiChat() {
                     if (part.type === "text")
                       return <MessageResponse key={i}>{part.text}</MessageResponse>;
                     if (part.type.startsWith("tool-")) {
-                      const out = (part as {
-                        output?: { kind?: string; courses?: AiCard[]; courseKey?: string };
-                      }).output;
+                      const out = (part as { output?: { kind?: string } }).output;
+                      // Keep the timetable visual; otherwise the text answer (with
+                      // clickable course links) carries everything — no course cards.
                       if (out?.kind === "schedule")
                         return <AiScheduleResult key={i} schedule={out as unknown as AiSchedule} />;
-                      let cards: AiCard[] | null = null;
-                      if (out?.courses && out.courses.length > 0) cards = out.courses;
-                      else if (out?.courseKey) cards = [out as AiCard];
-                      if (cards) return <AiCourseCards key={i} courses={cards} />;
-                      return (
-                        <span key={i} className="flex items-center gap-1.5 text-xs text-mute">
-                          <Search className="size-3" /> 搜尋課程資料庫…
-                        </span>
-                      );
+                      if (!out)
+                        return (
+                          <span key={i} className="flex items-center gap-1.5 text-xs text-mute">
+                            <Search className="size-3" /> 查詢課程資料…
+                          </span>
+                        );
+                      return null;
                     }
                     return null;
                   })}
