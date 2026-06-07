@@ -390,6 +390,14 @@ components:
 ---
 
 
+> ⚠️ **Historical reference — superseded.** This was the original Vercel-inspired
+> light/mesh-gradient analysis. The **shipped** product uses a different direction:
+> **dark-default glassmorphism with a single warm-gold accent** (`--accent`), Noto Sans TC,
+> an ambient gold glow, and frosted `.glass*` surface tiers. The neutral ink/canvas scale and
+> the per-card-accent idea survive; the rainbow mesh gradient does **not**.
+> **Source of truth for the live look is `src/app/globals.css`** (tokens + `.glass`/ambient),
+> not this file. Kept for design-rationale reference.
+
 ## Overview
 
 Vercel is a developer-platform brand — the page is a deployment dashboard's marketing surface, written for engineers who already know the syntax. It earns that posture with one of the cleanest stark systems on the web: near-white `{colors.canvas-soft}` body background, ink-near-black `{colors.ink}` text, a 200-step gray scale that gives every divider, border, and disabled state its own deliberate step. The only place the brand introduces colour at marketing scale is the multi-stop mesh gradient (`{colors.gradient-develop-start}` → `{colors.gradient-preview-end}` → `{colors.gradient-ship-start}` → cyan / magenta / amber) that floats in atmospheric backdrops, never miniaturised to a swatch. That gradient is the entire decoration system.
