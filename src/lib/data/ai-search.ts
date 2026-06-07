@@ -79,6 +79,12 @@ async function fetchSummaries(
   return out;
 }
 
+// The product only surfaces 3 dimensions (甜度/涼度/收穫); hide the legacy
+// loading/grading from the model so it never cites removed dimensions.
+function exposeRating(r: AiRating | null | undefined): AiRating | null {
+  return r ? { ...r, loading: null, grading: null } : null;
+}
+
 function toAiResult(
   c: CourseGroup,
   s?: { rating: AiRating; tags: Record<string, number> },
@@ -92,7 +98,7 @@ function toAiResult(
     credits: c.credits,
     departments: c.departments,
     latestSemester: c.latestSemester,
-    rating: s?.rating ?? null,
+    rating: exposeRating(s?.rating),
     tags: s?.tags ?? {},
     enrollFillRate: fillRate(c.offerings[0]?.enrollCount, c.offerings[0]?.enrollCap),
   };
@@ -173,8 +179,9 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
   const s = sums.get(courseKey);
   const reviews = await getReviews(courseKey);
   const sampleComments = reviews
-    .map((r) => r.shortComment)
-    .filter((c): c is string => !!c)
+    .map((r) => (r.body || r.shortComment || "").trim())
+    .filter((c) => c.length > 0)
+    .map((c) => (c.length > 120 ? c.slice(0, 120) + "…" : c))
     .slice(0, 6);
 
   return {
@@ -184,7 +191,7 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
     credits: course.credits,
     departments: course.departments,
     semesters: [...new Set(course.offerings.map((o) => o.semesterId))].sort((a, b) => b.localeCompare(a)),
-    rating: s?.rating ?? null,
+    rating: exposeRating(s?.rating),
     tags: s?.tags ?? {},
     enrollFillRate: fillRate(course.offerings[0]?.enrollCount, course.offerings[0]?.enrollCap),
     enrollAvgFillRate: avgFillRate(course.offerings).rate,
