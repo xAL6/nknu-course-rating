@@ -44,7 +44,6 @@ const reviewSchema = z.object({
   sweetness: z.coerce.number().int().min(1).max(5),
   coolness: z.coerce.number().int().min(1).max(5),
   quality: z.coerce.number().int().min(1).max(5),
-  shortComment: z.string().max(100).optional(),
   body: z.string().max(5000).optional(),
 });
 
@@ -73,7 +72,6 @@ export async function submitReview(formData: FormData) {
       sweetness: input.sweetness,
       coolness: input.coolness,
       quality: input.quality,
-      short_comment: input.shortComment || null,
       body: input.body || null,
       tags,
       display_name: displayName,
@@ -92,24 +90,6 @@ export async function submitReview(formData: FormData) {
   revalidatePath(`/course/${input.courseKey}`);
   revalidatePath("/leaderboard");
   return { ok: true };
-}
-
-export async function toggleBookmark(courseId: string, courseKey: string) {
-  const { supabase, user } = await requireUser();
-  const { data: existing } = await supabase
-    .from("bookmarks")
-    .select("course_id")
-    .eq("user_id", user.id)
-    .eq("course_id", courseId)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from("bookmarks").delete().eq("user_id", user.id).eq("course_id", courseId);
-  } else {
-    await supabase.from("bookmarks").insert({ user_id: user.id, course_id: courseId });
-  }
-  revalidatePath(`/course/${courseKey}`);
-  return { bookmarked: !existing };
 }
 
 const voteKind = z.enum(["like", "useful", "not_useful"]);

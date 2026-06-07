@@ -111,12 +111,9 @@ function buildText(p: { quality: number; loading: number; grading: number; cooln
   if (chance(0.4)) parts.push(pick(ATTEND));
   if (chance(0.7)) parts.push(pick(CLOSING));
 
-  const ordered = shuffle(parts);
-  const shortComment = ordered[0];
-  // body = the rest, sometimes omitted entirely for short reviews
-  const rest = ordered.slice(1);
-  const body = rest.length && chance(0.85) ? rest.join("。") + "。" : null;
-  return { shortComment, body };
+  // One 心得 paragraph (no separate one-line short review).
+  const body = shuffle(parts).join("。") + "。";
+  return { body };
 }
 
 function tagsFor(p: { loading: number; grading: number; coolness: number; quality: number }): string[] {
@@ -270,7 +267,7 @@ async function main() {
     const reviewers = sampleN(users, count); // distinct users => unique(course_id,user_id) holds
     for (const u of reviewers) {
       const r = ratingFrom(base);
-      const { shortComment, body } = buildText(r);
+      const { body } = buildText(r);
       rows.push({
         course_id: g.id,
         user_id: u.id,
@@ -280,7 +277,6 @@ async function main() {
         loading: r.loading,
         quality: r.quality,
         grading: r.grading,
-        short_comment: shortComment,
         body,
         tags: tagsFor(r),
         display_name: u.name,

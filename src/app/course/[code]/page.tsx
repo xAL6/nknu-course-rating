@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, ExternalLink, MapPin, Users, MessageSquare } from "lucide-react";
+import { ArrowLeft, ArrowRight, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RatingSummaryBars } from "@/components/rating-summary";
@@ -9,16 +9,13 @@ import { TagChips } from "@/components/tag-chips";
 import { ReviewVotes } from "@/components/review-votes";
 import { ReviewComments } from "@/components/review-comments";
 import { ReviewSummaryAI } from "@/components/review-summary-ai";
-import { AddToTimetable } from "@/components/add-to-timetable";
+import { OfferingHistory } from "@/components/offering-history";
 import { BackButton } from "@/components/back-button";
-import { BookmarkButton } from "@/components/bookmark-button";
-import { formatSlots } from "@/lib/schedule";
 import { SEMESTER_TERMS, RATING_DIMENSIONS } from "@/lib/config";
 import { getCourse, getCourseSibling } from "@/lib/data/courses";
 import { getReviews, getTeacherSummaries } from "@/lib/data/reviews";
 import { avgFillRate } from "@/lib/enrollment";
 import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
 import type { Offering } from "@/lib/data/types";
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
@@ -71,20 +68,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
     }))
     .sort((a, b) => b.offerings[0].semesterId.localeCompare(a.offerings[0].semesterId));
 
-  // Bookmark state
-  const bookmarkCourseId = course.offerings[0]?.id;
-  let bookmarked = false;
   const user = await getCurrentUser();
-  if (user && bookmarkCourseId) {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("bookmarks")
-      .select("course_id")
-      .eq("user_id", user.id)
-      .eq("course_id", bookmarkCourseId)
-      .maybeSingle();
-    bookmarked = !!data;
-  }
 
   const reviewsByTk = new Map<string, typeof reviews>();
   for (const r of reviews) {
@@ -123,11 +107,6 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
           {sibling.relation === "next" ? "下學期" : "上學期"}：{sibling.name}
           {sibling.relation === "next" && <ArrowRight className="size-3.5" />}
         </Link>
-      )}
-      {bookmarkCourseId && (
-        <div className="mt-4">
-          <BookmarkButton courseId={bookmarkCourseId} courseKey={course.courseKey} initial={bookmarked} />
-        </div>
       )}
 
       {/* Per-teacher sections */}
@@ -197,58 +176,10 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                 />
 
                 {/* This teacher's offerings */}
-                <div className="mt-5 border-t border-hairline pt-4">
-                  <h3 className="mb-2.5 text-sm font-semibold text-body">歷年開課紀錄</h3>
-                  <div className="space-y-1.5">
-                  {sec.offerings.map((o) => (
-                    <div
-                      key={o.syllabusNo ?? `${o.semesterId}-${o.classCode}`}
-                      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-mute"
-                    >
-                      <span className="font-mono">{semLabel(o.semesterId)}</span>
-                      <span className="font-mono text-body">{o.courseCode}</span>
-                      {o.courseType && <span>{o.courseType}</span>}
-                      {o.category === "Y" && <span className="text-link">學年</span>}
-                      {o.className && <span>{o.className}</span>}
-                      <span>{o.dayNight === "N" ? "進修" : "日間"}</span>
-                      <span className="text-body">{formatSlots(o.slots)}</span>
-                      {o.classroom && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="size-3" />
-                          {o.campus ? `${o.campus}・` : ""}
-                          {o.classroom}
-                        </span>
-                      )}
-                      {o.enrollCap != null && (
-                        <span className="flex items-center gap-1">
-                          <Users className="size-3" />
-                          {o.enrollCount}/{o.enrollCap}
-                        </span>
-                      )}
-                      <EnrollmentBadge count={o.enrollCount} cap={o.enrollCap} />
-                      <div className="ml-auto flex items-center gap-3">
-                        {o.syllabusUrl && (
-                          <a href={o.syllabusUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-link hover:underline">
-                            大綱 <ExternalLink className="size-3" />
-                          </a>
-                        )}
-                        <AddToTimetable
-                          course={{
-                            courseCode: course.courseCode,
-                            courseKey: course.courseKey,
-                            syllabusNo: o.syllabusNo,
-                            name: course.name,
-                            teachers: o.teachers,
-                            classroom: o.classroom,
-                            semesterId: o.semesterId,
-                            slots: o.slots,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  </div>
-                </div>
+                <OfferingHistory
+                  offerings={sec.offerings}
+                  course={{ courseCode: course.courseCode, courseKey: course.courseKey, name: course.name }}
+                />
 
                 {/* This teacher's reviews */}
                 {tReviews.length > 0 && (
@@ -298,12 +229,12 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                           </div>
 
                           {r.tags.length > 0 && <TagChips tags={r.tags} className="mt-3" />}
-                          {r.shortComment && (
-                            <p className="mt-3.5 text-[15px] font-semibold leading-snug text-ink">{r.shortComment}</p>
-                          )}
-                          {r.body && (
-                            <p className="mt-1.5 text-[15px] leading-relaxed whitespace-pre-wrap text-body">{r.body}</p>
-                          )}
+                          {(() => {
+                            const comment = [r.shortComment, r.body].filter(Boolean).join("\n");
+                            return comment ? (
+                              <p className="mt-3.5 text-[15px] leading-relaxed whitespace-pre-wrap text-body">{comment}</p>
+                            ) : null;
+                          })()}
                           <ReviewComments
                             reviewId={r.id}
                             courseKey={course.courseKey}

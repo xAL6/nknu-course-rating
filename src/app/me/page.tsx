@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bookmark, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -12,7 +12,7 @@ export default async function MePage() {
   if (!user) {
     return (
       <div className="mx-auto max-w-md px-6 py-20 text-center">
-        <p className="text-sm text-body">請先登入以查看你的評價與收藏。</p>
+        <p className="text-sm text-body">請先登入以查看你的評價。</p>
         <Button render={<Link href="/auth" />} nativeButton={false} className="mt-4 rounded-full">
           前往登入
         </Button>
@@ -21,17 +21,11 @@ export default async function MePage() {
   }
 
   const supabase = await createClient();
-  const [{ data: reviews }, { data: bookmarks }] = await Promise.all([
-    supabase
-      .from("reviews")
-      .select("id, short_comment, created_at, semester_id, courses(course_code, name, course_key)")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("bookmarks")
-      .select("course_id, courses(course_code, name, course_key)")
-      .eq("user_id", user.id),
-  ]);
+  const { data: reviews } = await supabase
+    .from("reviews")
+    .select("id, short_comment, body, created_at, semester_id, courses(course_code, name, course_key)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
   const semLabel = (id: string | null) => {
     if (!id) return "";
@@ -66,32 +60,9 @@ export default async function MePage() {
                     <span className="font-medium">{c?.name}</span>
                     <span className="font-mono text-xs text-mute">{semLabel(r.semester_id)}</span>
                   </div>
-                  {r.short_comment && <p className="mt-1 text-sm text-body">{r.short_comment}</p>}
-                </Link>
-              );
-            })
-          )}
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="flex items-center gap-2 text-sm font-medium text-body">
-          <Bookmark className="size-4" /> 收藏的課程（{bookmarks?.length ?? 0}）
-        </h2>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {(bookmarks ?? []).length === 0 ? (
-            <Empty text="尚未收藏課程。" />
-          ) : (
-            (bookmarks ?? []).map((b) => {
-              const c = b.courses as unknown as { course_code: string; name: string; course_key: string } | null;
-              return (
-                <Link
-                  key={b.course_id}
-                  href={c ? `/course/${encodeURIComponent(c.course_key)}` : "#"}
-                  className="glass-soft glass-interactive flex items-center gap-2 rounded-md px-4 py-3"
-                >
-                  <span className="font-mono text-xs text-mute">{c?.course_code}</span>
-                  <span className="truncate font-medium">{c?.name}</span>
+                  {(r.body || r.short_comment) && (
+                    <p className="mt-1 line-clamp-2 text-sm text-body">{r.body || r.short_comment}</p>
+                  )}
                 </Link>
               );
             })
