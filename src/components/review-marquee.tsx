@@ -33,7 +33,7 @@ export function ReviewMarquee({ reviews }: { reviews: RecentReview[] }) {
                 {DIMS.map((d) => {
                   const v = r[d.key];
                   return v == null ? null : (
-                    <span key={d.key} className="font-mono text-[11px] font-semibold" style={{ color: d.color }}>
+                    <span key={d.key} className="font-mono text-xs font-semibold" style={{ color: d.color }}>
                       {d.label}{v}
                     </span>
                   );

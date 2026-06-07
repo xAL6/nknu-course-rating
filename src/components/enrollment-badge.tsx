@@ -26,7 +26,7 @@ export function EnrollmentBadge({
   return (
     <span
       title={`額滿程度 ${pct}${detail}・${level.hint}`}
-      className={`inline-flex items-center gap-1 rounded-full border border-hairline px-2 py-0.5 text-[11px] font-medium ${className ?? ""}`}
+      className={`inline-flex items-center gap-1 rounded-full border border-hairline px-2 py-0.5 text-xs font-medium ${className ?? ""}`}
     >
       <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: level.tone }} />
       <span style={{ color: level.tone }}>{level.label}</span>

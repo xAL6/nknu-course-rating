@@ -229,7 +229,7 @@ export default async function CoursePage({ params }: { params: Promise<{ code: s
                                 </div>
                               </div>
                             </div>
-                            <ReviewVotes reviewId={r.id} courseKey={course.courseKey} likeCount={r.likeCount} usefulCount={r.usefulCount} />
+                            <ReviewVotes reviewId={r.id} courseKey={course.courseKey} likeCount={r.likeCount} />
                           </div>
 
                           <div className="mt-4 flex flex-wrap gap-2">

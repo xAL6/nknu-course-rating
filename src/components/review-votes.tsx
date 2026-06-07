@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ThumbsUp, Sparkle } from "lucide-react";
+import { ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 import { voteReview } from "@/lib/actions";
 
@@ -9,21 +9,21 @@ export function ReviewVotes({
   reviewId,
   courseKey,
   likeCount,
-  usefulCount,
 }: {
   reviewId: string;
   courseKey: string;
   likeCount: number;
-  usefulCount: number;
 }) {
   const [pending, start] = useTransition();
-  const [counts, setCounts] = useState({ like: likeCount, useful: usefulCount });
+  const [like, setLike] = useState(likeCount);
+  const [liked, setLiked] = useState(false);
 
-  function vote(kind: "like" | "useful") {
+  function vote() {
     start(async () => {
       try {
-        const res = await voteReview(reviewId, kind, courseKey);
-        setCounts((c) => ({ ...c, [kind]: c[kind] + (res.voted ? 1 : -1) }));
+        const res = await voteReview(reviewId, "like", courseKey);
+        setLiked(res.voted);
+        setLike((n) => n + (res.voted ? 1 : -1));
       } catch {
         toast.error("請先以高師大信箱登入。");
       }
@@ -31,21 +31,18 @@ export function ReviewVotes({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <button
-        onClick={() => vote("like")}
-        disabled={pending}
-        className="flex items-center gap-1 whitespace-nowrap rounded-full border border-hairline px-2.5 py-1 text-xs text-body transition-colors hover:bg-secondary disabled:opacity-50"
-      >
-        <ThumbsUp className="size-3" /> {counts.like}
-      </button>
-      <button
-        onClick={() => vote("useful")}
-        disabled={pending}
-        className="flex items-center gap-1 whitespace-nowrap rounded-full border border-hairline px-2.5 py-1 text-xs text-body transition-colors hover:bg-secondary disabled:opacity-50"
-      >
-        <Sparkle className="size-3" /> 實用 {counts.useful}
-      </button>
-    </div>
+    <button
+      onClick={vote}
+      disabled={pending}
+      aria-pressed={liked}
+      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50"
+      style={
+        liked
+          ? { borderColor: "var(--accent-line)", backgroundColor: "var(--accent-soft)", color: "var(--accent)" }
+          : { borderColor: "var(--hairline)" }
+      }
+    >
+      <ThumbsUp className={`size-4 ${liked ? "fill-current" : ""}`} /> {like}
+    </button>
   );
 }

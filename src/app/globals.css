@@ -57,6 +57,9 @@
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
   --color-success: var(--success);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+  --color-error-deep: var(--error-deep);
   /* rating dimensions: 甜 sweet / 涼 cool / loading 負擔 / 品質 quality / 給分 grading */
   --color-rate-sweet: var(--rate-sweet);
   --color-rate-cool: var(--rate-cool);
@@ -133,6 +136,9 @@
   --warning: #f5a623;
   --warning-soft: #ffefcf;
   --success: #0070f3;
+  --error: #dc2626;
+  --error-soft: #fde7e7;
+  --error-deep: #b91c1c;
   --rate-sweet: #ff0080;
   --rate-cool: #00dfd8;
   --rate-load: #f5a623;
@@ -204,6 +210,9 @@
   --hairline-strong: #404040;
   --link: #3291ff;
   --link-deep: #0070f3;
+  --error: #ef4444;
+  --error-soft: color-mix(in oklch, #ef4444 16%, transparent);
+  --error-deep: #fca5a5;
 
   /* single brand accent (refined warm gold on dark) */
   --accent: #f5b13d;

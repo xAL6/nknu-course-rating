@@ -47,7 +47,7 @@ export function CourseCard({ course, index = 0 }: { course: CourseGroup; index?:
           </span>
           <div className="flex shrink-0 items-center gap-1.5 text-xs text-mute">
             {yearLong && (
-              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ color: "var(--accent)", backgroundColor: "var(--accent-soft)" }}>
+              <span className="rounded-full px-1.5 py-0.5 text-[11px] font-medium" style={{ color: "var(--accent)", backgroundColor: "var(--accent-soft)" }}>
                 學年
               </span>
             )}
