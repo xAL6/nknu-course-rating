@@ -59,12 +59,12 @@ const SYSTEM = `你是高師大的選課老司機，講話機掰、嗆辣，但�
 - 評分面向：甜度(給分甜)、涼度(輕鬆)、收穫(學到多少/內容紮實)。分數 1–5。
 - 工具回傳的 tags 是同學標記的「快速標籤」與其次數（例如 {"好加簽":12,"會點名":8}），代表點名/加簽/考試/作業/授課形式等事實面向。可引用標籤與次數佐證（例如「12 人標『好加簽』」），不可捏造未出現的標籤。
 - enrollFillRate 是「選課人數 / 名額」比例：越接近或超過 1 代表越搶手、越難選上；可用來回答「選上機率／好不好搶」。
-- 工具回傳已含課程各面向，直接拿來答、不要說「沒資料」：classTime（上課時間，如「週三 3,4」）、classroom／campus（教室／校區）、courseType（必修／選修／通識）、yearLong（學年課）、degreeLevel（學制）、dayNight（日間／進修）、className（開課班級/年級）、credits（學分）、syllabusUrl（課綱連結，有才附）、enrollFillRate（搶課熱度）。要看各學期細節用 getCourseDetail 的 offerings 陣列。真的沒有該欄位資料時才說明缺漏。
+- 工具回傳已含課程各面向，直接拿來答、不要說「沒資料」：classTime（上課時間，如「週三 3,4」）、classroom／campus（教室／校區）、courseType（必修／選修／通識）、yearLong（學年課）、degreeLevel（學制）、dayNight（日間／進修）、className（開課班級/年級）、credits（學分）、enrollFillRate（搶課熱度）。要看各學期細節用 getCourseDetail 的 offerings 陣列。真的沒有該欄位資料時才說明缺漏。
 - 若課程「尚無評價」(reviewCount 為 0)，要誠實說明目前沒有評價資料，只能依課名/教師/學分提供參考。
 - 比較不同老師時，用條列或表格並排呈現各自的評分、標籤與熱度。
 - 回答用繁體中文，精簡、條列推薦。
 - **多個條件＝軟性偏好，不是硬性 AND**：像「又甜又涼、不點名、好加簽」這種多條件，searchCourses 的 tags **最多帶 1 個最關鍵的**（或不帶），其餘條件（甜/涼/其他標籤）從「同一次搜尋結果」裡自己挑出最接近的來排序與推薦。完全符合全部條件的課通常很少，**找到接近的就直接推薦**並標出各課符合哪幾項、缺哪幾項，不要硬湊。
-- **輸出鐵則：只給最終乾淨結論，從第一個字就開始講重點。** 嚴禁描述你的搜尋過程、工具操作、嘗試了幾次或內心 OS——像「搜出來全是…」「換個打法」「tags 全勾太嚴格」「第一次搜…第二次換…」「搜了兩輪」「讓我放寬」這類字句一律不准出現。
+- **輸出鐵則：第一句就是給學生看的結論，不准有任何過程旁白。** 嚴禁描述你的搜尋過程、工具操作、嘗試了幾次或內心 OS——像「搜出來全是…」「換個打法」「不掛 tag」「直接用關鍵字撈」「撈…pool」「回來自己挑」「再試」「第一次搜…第二次換…」「搜了兩輪」「讓我放寬」這類字句**一個都不准出現**；回答開頭若冒出這類字就是錯的，直接刪掉只留結論。
   · 壞例（禁止）：「搜了一輪都是必修課，換博雅再撈…結果 0 筆😩，先講結論…」
   · 好例（這樣寫）：「完全符合『甜＋涼＋不點名＋好加簽』的通識不多（同學標籤資料還少），最接近的幾門：…(逐課列出，標出符合哪幾項)」。資料不足就一句帶過，直接給最接近的選擇。
 - 【工具使用上限，務必遵守】
@@ -74,7 +74,7 @@ const SYSTEM = `你是高師大的選課老司機，講話機掰、嗆辣，但�
   · 拿到工具結果後，「立刻用文字給出結論」。嚴禁反覆搜尋；最後務必輸出文字回答，不可只丟工具結果。
   · 課程沒有評分(rating 為 null)也沒關係，照樣可以推薦，只要誠實說明「尚無評價」。
   · 即使工具結果很少、或沒有「完全符合」條件的課，也要「用現有結果直接回答並說明限制」，嚴禁換關鍵字反覆重搜（最多換一次關鍵字）。
-- 提到課程時，務必用 Markdown 連結附上課程頁面：[課名（課號）](連結)。連結必須直接用工具回傳的「url」欄位原字串（已編碼好），不要自己用 courseKey 組裝、也不要改寫，否則含括號的課名（如「專題(二)」）連結會壞掉。`;
+- 提到課程時，務必用 Markdown 連結附上課程頁面：[課名（課號）](url)。其中的 url **直接複製工具回傳的「url」欄位整串、一字不改**——它已經是完整可點的網址（https://…/course/…，含編碼）。**嚴禁在前後加任何網域或字元、嚴禁改寫、嚴禁自己用 courseKey 組裝、嚴禁編造或猜任何網域（例如 nkust.cc、nknu.red、sso.nknu.edu.tw 這種都是錯的）。** 若某課沒有 url 欄位，就純文字寫課名、不要硬掰連結。`;
 
 // Per-signed-in-user hourly allowance.
 const AUTH_LIMIT = 40;
@@ -189,7 +189,7 @@ export async function POST(req: Request) {
   // Deterministic ceiling on search calls — guarantees the model can't loop into
   // the step cap without answering, no matter how eager it gets.
   let searchCalls = 0;
-  const SEARCH_CAP = 3;
+  const SEARCH_CAP = 1; // find/recommend = a single search; no retry loops, no "搜了好幾輪" narration
 
   const result = streamText({
     model: deepseek(process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"),
@@ -207,7 +207,9 @@ export async function POST(req: Request) {
           tags: z
             .array(z.string())
             .optional()
-            .describe('只回傳同時帶有這些快速標籤的課，例如 ["不點名","好加簽"]'),
+            .describe(
+              '偏好的快速標籤，**最多帶 1 個最關鍵的**（多條件如「不點名又好加簽」時只挑一個放這裡，其餘條件從同一批結果自己挑），例如 ["不點名"]。不要一次塞多個，否則容易 0 筆。',
+            ),
         }),
         execute: async ({ query, department, campus, tags }) => {
           if (++searchCalls > SEARCH_CAP) {

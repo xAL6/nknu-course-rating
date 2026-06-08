@@ -43,8 +43,6 @@ export type AiCourseResult = {
   /** 上課教室與校區（最新一次開課）。 */
   classroom: string | null;
   campus: string | null;
-  /** 課程大綱（syllabus）連結；null 表示沒有。 */
-  syllabusUrl: string | null;
   /** 評價則數（彙總）。 */
   reviewCount: number;
   rating: AiRating | null;
@@ -67,12 +65,34 @@ async function resolveDept(
 ): Promise<{ code: string; name: string } | null> {
   const { data } = await supabase.from("departments").select("code, name");
   const depts = (data ?? []) as { code: string; name: string }[];
-  const isUg = (n: string) => !/碩|博|在職|進修|學分班|專班/.test(n);
-  const kw = input.replace(/系所?$|學系$|學程$/u, "").trim();
-  let cands = depts.filter((d) => d.name === input || d.name.includes(kw) || (kw && kw.includes(d.name)));
-  if (!cands.length && kw) cands = depts.filter((d) => [...kw].every((ch) => d.name.includes(ch)));
-  cands.sort((a, b) => (isUg(b.name) ? 1 : 0) - (isUg(a.name) ? 1 : 0) || a.name.length - b.name.length);
-  return cands[0] ?? null;
+  const isGrad = (n: string) => /碩|博|在職|進修|學分班|專班|研究所/.test(n);
+  const isProgram = (n: string) => /學程|專長|院課程|校區|軍訓|通識/.test(n);
+  const kw = input.replace(/系所?$|學系$|學程$|所$/u, "").trim();
+
+  // exact name wins outright
+  const exact = depts.find((d) => d.name === input);
+  if (exact) return exact;
+  if (!kw) return null;
+
+  // kw's chars must appear IN ORDER in the name — so 「特教」 matches 特[殊]教[育]學系,
+  // but 「資工」 does NOT match …工程…資訊… (wrong order). This stops the old any-order
+  // char-subset fallback from confidently mis-resolving (特教→特教學程, 資工→某碩士班).
+  const subseq = (q: string, n: string) => {
+    let i = 0;
+    for (const ch of n) if (ch === q[i]) i++;
+    return i === q.length;
+  };
+  const pick = (arr: { code: string; name: string }[]) => {
+    let c = arr.filter((d) => d.name.includes(kw) || kw.includes(d.name));
+    if (!c.length) c = arr.filter((d) => subseq(kw, d.name));
+    return c.sort((a, b) => a.name.length - b.name.length)[0] ?? null; // shortest = most specific dept
+  };
+
+  // Prefer a real undergraduate 學系; only fall back to grad/programs by substring
+  // (never subsequence), so an abbreviation can't confidently land on a 碩/博/學程.
+  const real = pick(depts.filter((d) => !isGrad(d.name) && !isProgram(d.name)));
+  if (real) return real;
+  return depts.filter((d) => d.name.includes(kw)).sort((a, b) => a.name.length - b.name.length)[0] ?? null;
 }
 
 /** Per-course (course_key) rating + tag aggregation from course_rating_summary. */
@@ -122,10 +142,15 @@ async function fetchSummaries(
   return out;
 }
 
-// Course page path for the AI to link to. encodeURIComponent leaves ()!*'~
+// Absolute course-page URL for the AI to link to. Returning a FULL url (not a
+// relative /course/… path) matters: given only a relative path, the model kept
+// "helpfully" prepending an invented domain (nkust.cc, nknu.red, …). A complete
+// https URL leaves nothing to fabricate. encodeURIComponent leaves ()!*'~
 // unescaped — and a literal ) closes a Markdown link early — so encode parens too.
+const SITE_BASE = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
 function coursePath(courseKey: string): string {
-  return "/course/" + encodeURIComponent(courseKey).replace(/\(/g, "%28").replace(/\)/g, "%29");
+  const path = "/course/" + encodeURIComponent(courseKey).replace(/\(/g, "%28").replace(/\)/g, "%29");
+  return SITE_BASE ? SITE_BASE + path : path;
 }
 
 // The product only surfaces 3 dimensions (甜度/涼度/收穫); hide the legacy
@@ -157,7 +182,6 @@ function toAiResult(
     classTime: formatSlots(o?.slots ?? []),
     classroom: o?.classroom ?? null,
     campus: o?.campus ?? null,
-    syllabusUrl: o?.syllabusUrl ?? null,
     reviewCount: s?.rating?.reviewCount ?? 0,
     rating: exposeRating(s?.rating),
     tags: s?.tags ?? {},
@@ -434,6 +458,8 @@ export async function getCourseDetailForAI(courseKey: string): Promise<AiCourseD
 
 export type ScheduleCourse = {
   courseKey: string;
+  /** Ready-to-use site course-page link — the model must link to THIS, not invent one. */
+  url: string;
   courseCode: string;
   syllabusNo: string | null;
   name: string;
@@ -541,6 +567,7 @@ export async function buildScheduleForAI(args: {
         args.prefer === "easy" && rating?.loading != null ? (5 - rating.loading) * 0.2 : 0;
       return {
         courseKey: c.courseKey,
+        url: coursePath(c.courseKey),
         courseCode: c.courseCode,
         syllabusNo: o.syllabusNo,
         name: c.name,

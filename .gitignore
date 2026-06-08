@@ -67,3 +67,6 @@ scripts/_*
 /skills-lock.json
 /my-video/
 /slides/
+
+# AI e2e harness scratch output
+/ai-e2e-output.txt
