@@ -661,8 +661,9 @@ export async function topCoursesForAI(args: {
 // ── By weekday / time-of-day ("週五下午有哪些涼課") ──────────────────────────────
 const PERIOD_BUCKETS: Record<string, string[]> = {
   morning: ["1", "2", "3", "4"],
-  afternoon: ["5", "6", "7", "8", "9", "10"],
-  evening: ["A", "B", "C", "D"],
+  // 'T' is the 17:10–18:00 slot (coded instead of '10' in many depts) → afternoon.
+  afternoon: ["5", "6", "7", "8", "9", "10", "T"],
+  evening: ["A", "B", "C", "D", "E"],
 };
 
 export async function coursesByTimeForAI(args: {

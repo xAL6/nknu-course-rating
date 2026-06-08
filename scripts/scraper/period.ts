@@ -38,8 +38,12 @@ export const PERIOD_TIMES: Record<string, string> = {
   "8": "15:10–16:00",
   "9": "16:10–17:00",
   "10": "17:10–18:00",
+  // 'T' = the 17:10–18:00 slot as coded by many depts/terms (used instead of
+  // '10'); 'E' = flexible/unscheduled block for 論文 (thesis).
+  T: "17:10–18:00",
   A: "18:30–19:20",
   B: "19:25–20:15",
   C: "20:20–21:10",
   D: "21:15–22:05",
+  E: "彈性",
 };

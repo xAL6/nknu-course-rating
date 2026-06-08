@@ -12,10 +12,15 @@ export const PERIOD_TIMES: Record<string, string> = {
   "8": "15:10–16:00",
   "9": "16:10–17:00",
   "10": "17:10–18:00",
+  // NKNU also codes the 17:10–18:00 slot as 'T' (used instead of '10' in many
+  // depts/terms); co-occurs with 8/9/A/B in the data. 'E' is the flexible /
+  // unscheduled block used by 論文 (thesis) — no fixed clock time.
+  T: "17:10–18:00",
   A: "18:30–19:20",
   B: "19:25–20:15",
   C: "20:20–21:10",
   D: "21:15–22:05",
+  E: "彈性",
 };
 
 /** Canonical period ordering (08:10 → 22:05). Used for adjacency/commute checks. */

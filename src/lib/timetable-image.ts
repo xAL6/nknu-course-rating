@@ -2,7 +2,7 @@ import type { TimetableCourse } from "@/lib/timetable-store";
 import { WEEKDAY_LABELS, PERIOD_TIMES } from "@/lib/period-shared";
 import { colorFor } from "@/lib/timetable-colors";
 
-const ORDER = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "A", "B", "C", "D"];
+const ORDER = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "T", "A", "B", "C", "D", "E"];
 
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rad = Math.min(r, w / 2, h / 2);

@@ -20,6 +20,7 @@ import {
   topCoursesForAI,
   coursesByTimeForAI,
 } from "@/lib/data/ai-search";
+import { PERIOD_TIMES } from "@/lib/period-shared";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -198,6 +199,20 @@ d("AI tools — correctness against live data", () => {
           expect(o.classTime.length).toBeGreaterThan(0);
         }
       }
+    });
+  });
+
+  // ── period coverage (timetable + coursesByTime depend on it) ─────────────
+  describe("period coverage", () => {
+    it("every period code present in the data has a PERIOD_TIMES entry", async () => {
+      const { data } = await admin.from("courses").select("slots").eq("semester_id", latestSem).limit(4000);
+      const seen = new Set<string>();
+      for (const c of (data ?? []) as { slots: { period: string }[] }[])
+        for (const s of c.slots ?? []) seen.add(String(s.period));
+      const missing = [...seen].filter((p) => !(p in PERIOD_TIMES));
+      // a missing period would render blank on the timetable and drop from
+      // coursesByTime buckets — exactly the T/E bug.
+      expect(missing).toEqual([]);
     });
   });
 
