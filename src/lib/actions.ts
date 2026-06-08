@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { rateLimit } from "@/lib/rate-limit";
 import {
   isAllowedEmail,
   randomDisplayName,
@@ -12,6 +13,37 @@ import {
 } from "@/lib/config";
 
 const ALLOWED_TAGS = new Set(REVIEW_TAG_VALUES);
+
+/**
+ * Per-user write throttle. Best-effort (in-memory per instance, like the AI
+ * limiter) — stops a single account from hammering an action; swap for a shared
+ * store (Upstash) for cross-instance guarantees.
+ */
+function throttle(action: string, userId: string, limit: number, windowMs: number) {
+  if (!rateLimit(`act:${action}:${userId}`, limit, windowMs).ok) throw new Error("RATE_LIMITED");
+}
+
+/** Log a DB error server-side and surface a generic code — never leak internals. */
+function failDb(action: string, error: unknown): never {
+  console.error(`[action:${action}]`, error);
+  throw new Error("REQUEST_FAILED");
+}
+
+/** Magic-byte sniff: the real image MIME, or null if the bytes aren't a known image. */
+function sniffImageMime(b: Uint8Array): string | null {
+  if (b.length >= 4 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.length >= 4 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return "image/gif";
+  if (
+    b.length >= 12 &&
+    b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+    b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50
+  )
+    return "image/webp";
+  return null;
+}
+
+const MINUTE = 60 * 1000;
 
 /** Require an authenticated NKNU-domain user; ensure their profile exists. */
 async function requireUser() {
@@ -46,6 +78,7 @@ const reviewSchema = z.object({
 
 export async function submitReview(formData: FormData) {
   const { supabase, user, displayName } = await requireUser();
+  throttle("review", user.id, 20, 10 * MINUTE);
   const input = reviewSchema.parse(Object.fromEntries(formData));
 
   // tags arrive as repeated form fields — Object.fromEntries would drop all but
@@ -76,7 +109,7 @@ export async function submitReview(formData: FormData) {
     },
     { onConflict: "course_id,user_id" },
   );
-  if (error) throw error;
+  if (error) failDb("submitReview", error);
 
   const { count } = await supabase
     .from("reviews")
@@ -104,6 +137,7 @@ const MIME_EXT: Record<string, string> = {
  */
 export async function updateProfile(formData: FormData) {
   const { user } = await requireUser();
+  throttle("profile", user.id, 8, 10 * MINUTE);
   const admin = createAdminClient();
 
   const name = String(formData.get("displayName") ?? "").trim();
@@ -122,9 +156,12 @@ export async function updateProfile(formData: FormData) {
     if (file.size > 2_097_152) throw new Error("FILE_TOO_LARGE");
     const ext = MIME_EXT[file.type];
     if (!ext) throw new Error("BAD_FILE_TYPE");
+    const buf = await file.arrayBuffer();
+    // Don't trust the client-declared MIME — verify the actual bytes are the
+    // image type they claim (rejects mislabeled / polyglot uploads).
+    if (sniffImageMime(new Uint8Array(buf)) !== file.type) throw new Error("BAD_FILE_TYPE");
     await clearFolder();
     const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-    const buf = await file.arrayBuffer();
     const { error: upErr } = await admin.storage
       .from("avatars")
       .upload(path, buf, { contentType: file.type, upsert: true });
@@ -136,7 +173,7 @@ export async function updateProfile(formData: FormData) {
   }
 
   const { error } = await admin.from("profiles").update(patch).eq("user_id", user.id);
-  if (error) throw error;
+  if (error) failDb("updateProfile", error);
 
   // Keep the snapshotted name consistent on existing UGC.
   await admin.from("reviews").update({ display_name: name }).eq("user_id", user.id);
@@ -150,6 +187,7 @@ const voteKind = z.enum(["like", "useful", "not_useful"]);
 
 export async function voteReview(reviewId: string, kind: string, courseKey: string) {
   const { supabase, user } = await requireUser();
+  throttle("vote", user.id, 40, MINUTE);
   const k = voteKind.parse(kind);
   const { data: existing } = await supabase
     .from("votes")
@@ -181,6 +219,7 @@ const timetableCourse = z.object({
 /** Persist the user's timetable (one row per user). */
 export async function saveTimetable(courses: unknown) {
   const { supabase, user } = await requireUser();
+  throttle("timetable", user.id, 30, 5 * MINUTE);
   const parsed = z.array(timetableCourse).max(60).parse(courses);
   const semesterId = parsed[0]?.semesterId ?? null;
   const { error } = await supabase.from("timetables").upsert(
@@ -192,7 +231,7 @@ export async function saveTimetable(courses: unknown) {
     },
     { onConflict: "user_id" },
   );
-  if (error) throw error;
+  if (error) failDb("saveTimetable", error);
   return { ok: true, count: parsed.length };
 }
 
@@ -218,11 +257,12 @@ export async function loadTimetable() {
 
 export async function addComment(reviewId: string, body: string, courseKey: string) {
   const { supabase, user, displayName } = await requireUser();
+  throttle("comment", user.id, 15, 5 * MINUTE);
   const text = z.string().min(1).max(2000).parse(body);
   const { error } = await supabase
     .from("comments")
     .insert({ review_id: reviewId, user_id: user.id, body: text, display_name: displayName });
-  if (error) throw error;
+  if (error) failDb("addComment", error);
   revalidatePath(`/course/${courseKey}`);
   return { ok: true };
 }
