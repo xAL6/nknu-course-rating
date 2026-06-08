@@ -31,7 +31,7 @@ const semLabel = (id: string | null) => {
   return `${y} ${SEMESTER_TERMS[t] ?? t}`;
 };
 
-const PERIODS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "A", "B", "C", "D"];
+const PERIODS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "T", "A", "B", "C", "D"];
 const WEEKDAYS = [1, 2, 3, 4, 5, 6];
 
 type SearchItem = TimetableCourse & { credits: number | null };
