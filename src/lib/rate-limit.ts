@@ -34,9 +34,21 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   return { ok: true, remaining: limit - bucket.hits.length, resetMs: windowMs };
 }
 
-/** Best-effort client IP from proxy headers (Vercel sets x-forwarded-for). */
+/**
+ * Client IP for rate-limit keying. Prefer headers the Vercel edge sets and
+ * overwrites on every request (so a client can't forge them); only fall back to
+ * the client-supplied x-forwarded-for as a last resort. Reading the left-most
+ * x-forwarded-for value would let anyone mint a fresh bucket per request.
+ */
 export function clientIp(req: Request): string {
+  const trusted = req.headers.get("x-vercel-forwarded-for") ?? req.headers.get("x-real-ip");
+  if (trusted) return trusted.split(",")[0].trim();
+  // Last resort (non-Vercel / local): take the RIGHT-most XFF hop, which is the
+  // closest trusted proxy rather than the spoofable client-supplied left-most.
   const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
+  if (xff) {
+    const hops = xff.split(",").map((s) => s.trim()).filter(Boolean);
+    return hops[hops.length - 1] ?? "unknown";
+  }
+  return "unknown";
 }

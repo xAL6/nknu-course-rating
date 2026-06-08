@@ -13,8 +13,17 @@
  * and the reviews trigger drops now-empty course_rating_summary rows. `--purge`
  * does exactly that.
  */
-import { createAdminClient } from "../src/lib/supabase/admin";
+import { createClient } from "@supabase/supabase-js";
 import { REVIEW_TAG_VALUES } from "../src/lib/config";
+
+// Self-contained service-role client (BYPASSES RLS) — this is a Node/tsx script,
+// so it can't import the app's `server-only`-guarded src/lib/supabase/admin.ts.
+function createAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
 
 type Sb = ReturnType<typeof createAdminClient>;
 

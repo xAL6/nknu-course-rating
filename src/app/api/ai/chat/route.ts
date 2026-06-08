@@ -19,7 +19,7 @@ import {
   coursesByTimeForAI,
 } from "@/lib/data/ai-search";
 import { createClient } from "@/lib/supabase/server";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
 
@@ -76,8 +76,7 @@ const SYSTEM = `你是高師大的選課老司機，講話機掰、嗆辣，但�
   · 即使工具結果很少、或沒有「完全符合」條件的課，也要「用現有結果直接回答並說明限制」，嚴禁換關鍵字反覆重搜（最多換一次關鍵字）。
 - 提到課程時，務必用 Markdown 連結附上課程頁面：[課名（課號）](連結)。連結必須直接用工具回傳的「url」欄位原字串（已編碼好），不要自己用 courseKey 組裝、也不要改寫，否則含括號的課名（如「專題(二)」）連結會壞掉。`;
 
-// Signed-in NKNU students get a higher allowance than anonymous visitors.
-const ANON_LIMIT = 8; // requests
+// Per-signed-in-user hourly allowance.
 const AUTH_LIMIT = 40;
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
@@ -153,14 +152,19 @@ export async function POST(req: Request) {
     });
   }
 
-  // Auth-aware rate limiting (per user when signed in, else per IP).
+  // Sign-in required — the AI advisor is for logged-in students only. Anonymous
+  // requests are rejected before the model, tools, or rate limiter run.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const limitKey = user ? `ai:user:${user.id}` : `ai:ip:${clientIp(req)}`;
-  const limit = user ? AUTH_LIMIT : ANON_LIMIT;
-  const rl = rateLimit(limitKey, limit, WINDOW_MS);
+  if (!user) {
+    return new Response(JSON.stringify({ error: "LOGIN_REQUIRED" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const rl = rateLimit(`ai:user:${user.id}`, AUTH_LIMIT, WINDOW_MS);
   if (!rl.ok) {
     const mins = Math.ceil(rl.resetMs / 60000);
     return new Response(
