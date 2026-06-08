@@ -1,0 +1,226 @@
+@startuml NKNU_Course_Rating_Schema
+!pragma layout smetana
+'==================================================================
+'  NKNU 選課評價 — Database Schema (Supabase / Postgres)
+'==================================================================
+
+skinparam dpi 200
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 4
+skinparam defaultFontName "Noto Sans TC"
+skinparam nodesep 50
+skinparam ranksep 65
+
+skinparam class {
+  BackgroundColor       #FFFFFF
+  BorderColor           #888888
+  ArrowColor            #888888
+  FontColor             #000000
+  FontStyle             bold
+  AttributeFontColor    #000000
+  AttributeFontSize     12
+  AttributeIconSize     0
+  HeaderBackgroundColor #F0F0F0
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor     #CCCCCC
+  FontColor       #555555
+}
+
+!define PK(x)  <b>x</b>  <&key>
+!define FK(x)  x  (FK)
+!define UQ(x)  <b>x</b>  (unique)
+
+'==================================================================
+'  REFERENCE
+'==================================================================
+package "Reference" {
+
+  entity "semesters" as semesters {
+    PK(id : text)
+    --
+    year : smallint
+    term : smallint
+    label : text
+  }
+
+  entity "departments" as departments {
+    PK(code : text)
+    --
+    name : text
+    college : text
+    campus : text
+    degree_type : text
+  }
+
+  entity "teachers" as teachers {
+    PK(id : uuid)
+    --
+    UQ(name : text)
+    name_en : text
+  }
+
+  entity "rooms" as rooms {
+    PK(room_code : text)
+    --
+    campus : text
+    building : text
+    name : text
+  }
+}
+
+'==================================================================
+'  COURSES
+'==================================================================
+package "Courses" {
+
+  entity "courses" as courses {
+    PK(id : uuid)
+    --
+    UQ(syllabus_no : text)
+    course_code : text
+    name / name_en : text
+    credits : numeric
+    course_type / category : text
+    FK(department_code) : text
+    FK(semester_id) : text
+    campus / day_night : text
+    class_time_raw / slots : jsonb
+    classroom : text
+    enroll_count / enroll_cap : smallint
+    syllabus_url : text
+    --
+    course_key : text
+    teacher_key : text
+    teacher_names : text[]
+    class_codes / class_names : text[]
+    department_codes : text[]
+    degree_level_codes : text[]
+  }
+
+  entity "course_teachers" as course_teachers {
+    PK(course_id : uuid)
+    PK(teacher_id : uuid)
+  }
+
+  entity "course_rating_summary" as summary {
+    PK(course_key : text)
+    PK(teacher_key : text)
+    --
+    review_count : integer
+    avg_sweetness : numeric
+    avg_coolness : numeric
+    avg_quality : numeric
+    tag_counts : jsonb
+    ai_summary : text
+    updated_at : timestamptz
+  }
+}
+
+'==================================================================
+'  AUTH
+'==================================================================
+package "Auth" {
+
+  entity "auth.users" as users {
+    PK(id : uuid)
+  }
+
+  entity "profiles" as profiles {
+    PK(user_id : uuid)
+    --
+    display_name : text
+    reputation : integer
+    avatar_url : text
+  }
+}
+
+'==================================================================
+'  UGC
+'==================================================================
+package "UGC" {
+
+  entity "reviews" as reviews {
+    PK(id : uuid)
+    --
+    FK(course_id) : uuid
+    FK(user_id) : uuid
+    FK(semester_id) : text
+    sweetness / coolness / quality : smallint
+    loading / grading : smallint
+    body : text
+    tags : text[]
+    display_name : text
+    like_count / useful_count : int
+    ai_flagged : boolean
+  }
+
+  entity "comments" as comments {
+    PK(id : uuid)
+    --
+    FK(review_id) : uuid
+    FK(user_id) : uuid
+    body : text
+    display_name : text
+  }
+
+  entity "votes" as votes {
+    PK(user_id : uuid)
+    PK(review_id : uuid)
+    PK(kind : text)
+  }
+
+  entity "bookmarks" as bookmarks {
+    PK(user_id : uuid)
+    PK(course_id : uuid)
+  }
+}
+
+'==================================================================
+'  PERSONAL
+'==================================================================
+package "Personal" {
+
+  entity "timetables" as timetables {
+    PK(user_id : uuid)
+    --
+    semester_id : text
+    courses : jsonb
+    updated_at : timestamptz
+  }
+
+  entity "_migrations" as migrations {
+    PK(name : text)
+    --
+    applied_at : timestamptz
+  }
+}
+
+'==================================================================
+'  RELATIONSHIPS
+'==================================================================
+departments ||--o{ courses          : code
+semesters   ||--o{ courses          : semester_id
+
+courses     ||--o{ course_teachers
+teachers    ||--o{ course_teachers
+
+courses     ||--o{ reviews          : course_id
+semesters   ||--o{ reviews          : semester_id
+courses     ..>   summary           : course_key
+
+users       ||--|| profiles         : user_id
+profiles    ||--o{ reviews          : user_id
+users       ||--o{ comments         : user_id
+users       ||--o{ votes            : user_id
+users       ||--o{ bookmarks        : user_id
+users       ||--|| timetables       : user_id
+
+reviews     ||--o{ comments         : review_id
+reviews     ||--o{ votes            : review_id
+courses     ||--o{ bookmarks        : course_id
+
+@enduml

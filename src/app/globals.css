@@ -304,7 +304,7 @@
     filter: blur(8px);
   }
 
-  /* animated rating-bar fill (paired with hyperframes/anime for entrance) */
+  /* animated rating-bar fill (width transition on entrance) */
   .rating-bar-fill {
     transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
   }

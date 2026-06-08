@@ -61,3 +61,8 @@ scripts/_*
 /*.jpeg
 /*.png
 .playwright-mcp/
+
+# agent / video-tooling bundles (not part of the app)
+/.agents/
+/skills-lock.json
+/my-video/
