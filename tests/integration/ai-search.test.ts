@@ -292,6 +292,38 @@ d("AI tools — correctness against live data", () => {
     });
   });
 
+  // ── remaining tool-path locks (campus filter, offering order, single teacher) ──
+  describe("misc tool paths", () => {
+    it("retrieveCourses campus filter only returns the asked campus", async () => {
+      const r = await retrieveCourses("教育", undefined, { campus: "燕巢" });
+      // every result that carries a campus must be the requested one
+      for (const c of r) if (c.campus) expect(c.campus).toBe("燕巢");
+    });
+
+    it("getCourseDetail offerings are newest-first", async () => {
+      const { data } = await admin
+        .from("course_rating_summary")
+        .select("course_key, review_count")
+        .order("review_count", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!data) return;
+      const detail = await getCourseDetailForAI(data.course_key as string);
+      if (!detail) return;
+      for (let i = 1; i < detail.offerings.length; i++)
+        expect(detail.offerings[i - 1].semester >= detail.offerings[i].semester).toBe(true);
+    });
+
+    it("compareTeachers on a single-teacher course name doesn't crash and returns it", async () => {
+      // pick any real course name, compare — must return >=1 with valid links
+      const any = await retrieveCourses("專題");
+      if (!any.length) return;
+      const r = await compareTeachersForAI(any[0].name);
+      expect(r.length).toBeGreaterThanOrEqual(1);
+      for (const c of r) expect(c.url.includes("/course/")).toBe(true);
+    });
+  });
+
   // ── period coverage (timetable + coursesByTime depend on it) ─────────────
   describe("period coverage", () => {
     it("every period code present in the data has a PERIOD_TIMES entry", async () => {
