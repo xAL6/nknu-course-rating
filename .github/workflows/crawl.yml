@@ -34,7 +34,13 @@ jobs:
           node-version: 24
           cache: npm
 
-      - run: npm ci
+      # NOT `npm ci`: the lock is generated on Windows (dev), so the Linux-only
+      # optional deps of @tailwindcss/oxide-wasm32-wasi (@emnapi/core/runtime,
+      # @napi-rs/wasm-runtime) aren't pinned in it, and `npm ci` hard-fails with
+      # "Missing: @emnapi/runtime from lock file". The crawler doesn't touch
+      # Tailwind anyway, so a tolerant install that self-heals the platform drift
+      # is the right call here.
+      - run: npm install --no-audit --no-fund
 
       - name: Run crawler
         env:
