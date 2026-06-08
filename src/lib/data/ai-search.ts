@@ -59,7 +59,7 @@ const dnLabel = (d: string | null | undefined) => (d === "N" ? "進修" : d === 
  * among equal candidates, the SHORTEST name (so 「教育系」→「教育學系」, not
  * 「特殊教育學系」). Sourced from the authoritative `departments` table.
  */
-async function resolveDept(
+export async function resolveDept(
   supabase: Awaited<ReturnType<typeof createClient>>,
   input: string,
 ): Promise<{ code: string; name: string } | null> {

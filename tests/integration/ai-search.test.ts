@@ -19,7 +19,9 @@ import {
   listDeptCoursesForAI,
   topCoursesForAI,
   coursesByTimeForAI,
+  resolveDept,
 } from "@/lib/data/ai-search";
+import { createClient as createAnon } from "@supabase/supabase-js";
 import { PERIOD_TIMES } from "@/lib/period-shared";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -126,6 +128,31 @@ d("AI tools — correctness against live data", () => {
       // 高師大 has no undergrad 資工系; better to say not-found than land on a grad program.
       const r = await listDeptCoursesForAI({ department: "資工系" });
       if (!("error" in r)) expect(r.department).not.toMatch(/碩士班|博士班|學程/);
+    });
+
+    // Comprehensive sweep across EVERY undergrad 學系 in the DB (not just spot
+    // checks): full name must resolve to itself, and the 「X系」 abbreviation must
+    // never confidently land on a 碩/博/學程 variant.
+    it("resolveDept: full name → self, and 系-abbrev never lands on a grad/program", async () => {
+      const sb = createAnon(url!, anon!, { auth: { persistSession: false } });
+      const { data } = await sb.from("departments").select("code, name");
+      const all = (data ?? []) as { code: string; name: string }[];
+      const undergrad = all.filter(
+        (d) => /學系$|系$/.test(d.name) && !/碩|博|在職|進修|學分班|專班|研究所|學程|專長|校區|軍訓/.test(d.name),
+      );
+      expect(undergrad.length).toBeGreaterThan(10);
+
+      const fails: string[] = [];
+      for (const d of undergrad) {
+        const exact = await resolveDept(sb, d.name);
+        if (exact?.name !== d.name) fails.push(`full「${d.name}」→「${exact?.name ?? "null"}」`);
+        const abbr = d.name.replace(/學系$/, "系");
+        if (abbr !== d.name) {
+          const r = await resolveDept(sb, abbr);
+          if (r && /碩士班|博士班|研究所|學程/.test(r.name)) fails.push(`abbr「${abbr}」→「${r.name}」(grad/program)`);
+        }
+      }
+      expect(fails).toEqual([]);
     });
   });
 
