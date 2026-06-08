@@ -52,7 +52,7 @@ const SYSTEM = `你是高師大的選課老司機，講話機掰、嗆辣，但�
   · searchCourses — 依關鍵字／主題找課（例如「推薦輕鬆的通識」）；可用 tags 篩選（例如只看「不點名」「好加簽」的課）。tags 僅能用這些值：會點名/不點名/點名抽人/好加簽/難加簽/不考試/重期末/有期中考/重報告/作業偏多/需分組/佛心給分/容易被當/全英授課/遠距居多。
   · compareTeachers — 比較「同一門課的不同授課老師」，傳入課名。
   · getCourseDetail — 深入單一課程（評分、標籤分布、歷年搶課熱度、短評），courseKey 取自其他工具回傳值。
-  · buildSchedule — 自動排出一份「不衝堂」的建議課表。把使用者說的空堂日轉成 freeWeekdays（1=週一…7=週日，例如「週五沒課」→[5]），系所名稱放 department；可帶 targetCredits、tags、prefer（sweet/easy/quality）。回傳的是一個「可行建議」，要提醒可再自行調整，不可捏造未回傳的課；若回傳 error，請把 message 轉達給學生。
+  · buildSchedule — 自動排出一份「不衝堂」的建議課表。系所名稱放 department、年級放 grade（大四=4）、上學期 term='1'／下學期 term='2'；把使用者說的空堂日轉成 freeWeekdays（1=週一…7=週日，例如「週五沒課」→[5]）；可帶 targetCredits、tags、prefer（sweet/easy/quality）。例：「軟工系大四上學期 15 學分」→ department='軟工系', grade=4, term='1', targetCredits=15。回傳的是一個「可行建議」，要提醒可再自行調整，不可捏造未回傳的課；若回傳 error，請把 message 轉達給學生。
   · topCourses — 排行榜（全校最甜／最涼／收穫最高／最多人評價的課）。「最…的課」「排行」用這個，by=sweet/cool/takeaway/reviews。
   · coursesByTime — 依「星期＋時段」找課（「週X早上/下午/晚上有哪些課」）。weekday 1–7、timeOfDay morning/afternoon/evening；要涼/甜用 prefer 排序。
 - **能用工具就一定用工具，不要說「系統不支援」「搜不到」「時間沒辦法搜」然後叫使用者補資料**：問時段→coursesByTime、問排行/最…→topCourses、問系所年級→listDeptCourses。
@@ -254,10 +254,12 @@ export async function POST(req: Request) {
       }),
       buildSchedule: tool({
         description:
-          "依條件自動排出一份『不衝堂』的建議課表（預設會避開跨校區緊接）。把『週五沒課』轉成 freeWeekdays:[5]，系所名稱放 department。",
+          "依條件自動排出一份『不衝堂』的建議課表（預設會避開跨校區緊接）。把『週五沒課』轉成 freeWeekdays:[5]，系所名稱放 department，年級放 grade（大四=4），上學期 term='1'、下學期 term='2'。",
         inputSchema: z.object({
-          department: z.string().optional().describe("系所名稱關鍵字，例如『數學系』"),
-          semester: z.string().optional().describe("學年期，例如 114-1；省略則用最新學期"),
+          department: z.string().optional().describe("系所名稱關鍵字，例如『數學系』『軟工系』"),
+          grade: z.number().int().min(1).max(7).optional().describe("年級，大一=1…大四=4；只排該年級（含全年級選修）的課"),
+          term: z.string().optional().describe("學期：上學期='1'、下學期='2'、暑期='3'；用來挑該學期最新一次開課"),
+          semester: z.string().optional().describe("學年期，例如 114-1；通常給 grade+term 即可，不必自己填這個"),
           freeWeekdays: z
             .array(z.number().int().min(1).max(7))
             .optional()

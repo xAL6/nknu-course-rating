@@ -459,6 +459,8 @@ export type ScheduleResult =
  */
 export async function buildScheduleForAI(args: {
   department?: string;
+  grade?: number;
+  term?: string;
   semester?: string;
   freeWeekdays?: number[];
   targetCredits?: number;
@@ -466,41 +468,66 @@ export async function buildScheduleForAI(args: {
   prefer?: "sweet" | "easy" | "quality";
   avoidCrossCampus?: boolean;
 }): Promise<ScheduleResult> {
-  const semester = args.semester ?? (await latestSemester());
-  if (!semester) return { error: "NO_SEMESTER", message: "目前沒有可用的學期資料。" };
-
   const supabase = await createClient();
 
-  // Resolve a department name keyword to its code (keeps the candidate pool small).
-  let deptCode: string | undefined;
+  // 1) resolve semester: explicit → latest of the asked term → latest main term.
+  let semester = args.semester;
+  if (!semester) {
+    const { data: semRows } = await supabase.from("semesters").select("id").order("id", { ascending: false });
+    const ids = (semRows ?? []).map((s) => s.id as string);
+    semester = (args.term ? ids.find((id) => id.endsWith(`-${args.term}`)) : ids.find((id) => !id.endsWith("-3"))) ?? ids[0];
+  }
+  if (!semester) return { error: "NO_SEMESTER", message: "目前沒有可用的學期資料。" };
+
+  // 2) resolve department (abbreviation-friendly, 大學部-preferred) — same path as
+  // listDeptCourses, so 「軟工系」→「軟體工程與管理學系」 instead of DEPT_NOT_FOUND.
+  let dept: { code: string; name: string } | null = null;
   if (args.department) {
-    const { data } = await supabase.rpc("facet_departments", {
-      p_sem: semester,
-      p_level: null,
-      p_dn: null,
-      p_campus: null,
-    });
-    const facets = (data ?? []) as { code: string; name: string }[];
-    const kw = args.department.replace(/系所$|學系$|系$/u, "").trim();
-    const hit =
-      facets.find((f) => f.name === args.department) ??
-      facets.find((f) => f.name.includes(kw) || (kw.length > 0 && kw.includes(f.name)));
-    deptCode = hit?.code;
-    if (!deptCode)
+    dept = await resolveDept(supabase, args.department);
+    if (!dept)
       return {
         error: "DEPT_NOT_FOUND",
         message: `找不到系所「${args.department}」，請確認名稱（可參考課程列表的系所名稱）。`,
       };
   }
 
-  const list = await listCourses({ semester, dept: deptCode, pageSize: 300, withFacets: false });
-  const sums = await fetchSummaries(list.items.map((c) => c.courseKey).filter(Boolean));
+  // 3) grade → that year's class codes (+ all-grade electives), so 「大四」 only
+  // pulls senior-level courses instead of the whole department.
+  let classCodes: string[] | null = null;
+  if (dept && args.grade && args.grade >= 1 && args.grade <= 7) {
+    const { data: classRows } = await supabase.rpc("facet_classes", {
+      p_sem: semester,
+      p_level: null,
+      p_dn: null,
+      p_campus: null,
+      p_dept: dept.code,
+    });
+    const classes = (classRows ?? []) as { code: string; name: string }[];
+    const gstr = CJK_NUM[args.grade - 1] + "年級";
+    const matched = classes.filter((c) => c.name.includes(gstr) || /全年級|不分年級/.test(c.name));
+    classCodes = matched.map((c) => c.code);
+    if (!classCodes.length) classCodes = null; // no such grade → fall back to whole dept
+  }
+
+  // 4) gather candidate offerings via the browse path (grade-scoped when known).
+  const groups = new Map<string, CourseGroup>();
+  if (dept && classCodes) {
+    for (const cc of classCodes) {
+      const r = await listCourses({ semester, dept: dept.code, classCode: cc, pageSize: 500, withFacets: false });
+      for (const g of r.items) groups.set(g.courseKey + "|" + g.courseCode, g);
+    }
+  } else {
+    const r = await listCourses({ semester, dept: dept?.code, pageSize: 300, withFacets: false });
+    for (const g of r.items) groups.set(g.courseKey + "|" + g.courseCode, g);
+  }
+  const items = [...groups.values()];
+  const sums = await fetchSummaries(items.map((c) => c.courseKey).filter(Boolean));
 
   const tags = args.tags?.filter(Boolean) ?? [];
   const prefDim: keyof AiRating =
     args.prefer === "sweet" ? "sweetness" : args.prefer === "easy" ? "coolness" : "quality";
 
-  const candidates = list.items
+  const candidates = items
     .map((c) => {
       const o = c.offerings[0];
       if (!o) return null;
