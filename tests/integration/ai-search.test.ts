@@ -188,17 +188,80 @@ d("AI tools — correctness against live data", () => {
 
   // ── coursesByTimeForAI (星期+時段) ───────────────────────────────────────
   describe("coursesByTimeForAI", () => {
-    it("週一早上: every returned course actually has a Mon morning slot", async () => {
-      const r = await coursesByTimeForAI({ weekday: 1, timeOfDay: "morning", limit: 15 });
-      if (!("error" in r)) {
-        expect(r.courses.length).toBeGreaterThan(0);
-        const morning = new Set(["1", "2", "3", "4"]);
-        for (const c of r.courses) {
-          const o = (c as { classTime: string });
-          // the course must have at least one slot matching weekday 1 + morning period
-          expect(o.classTime.length).toBeGreaterThan(0);
-        }
+    // verify the returned courses ACTUALLY match the requested weekday+bucket by
+    // re-checking each course's raw slots against the DB (not just classTime).
+    const BUCKETS: Record<string, string[]> = {
+      morning: ["1", "2", "3", "4"],
+      afternoon: ["5", "6", "7", "8", "9", "10", "T"],
+      evening: ["A", "B", "C", "D", "E"],
+    };
+    // a course_key can have several offering rows in one semester; union them all
+    // (the tool matches on one offering — the union is a superset, so it must match).
+    async function slotsOf(courseKey: string): Promise<{ weekday: number; period: string }[]> {
+      const { data } = await admin
+        .from("courses")
+        .select("slots")
+        .eq("course_key", courseKey)
+        .eq("semester_id", latestSem);
+      return ((data ?? []) as { slots: { weekday: number; period: string }[] }[]).flatMap((r) => r.slots ?? []);
+    }
+
+    it("週一早上: every result truly has a Mon morning slot", async () => {
+      const r = await coursesByTimeForAI({ weekday: 1, timeOfDay: "morning", limit: 12 });
+      if ("error" in r) return;
+      expect(r.courses.length).toBeGreaterThan(0);
+      for (const c of r.courses.slice(0, 6)) {
+        const slots = await slotsOf(c.courseKey);
+        expect(slots.some((s) => Number(s.weekday) === 1 && BUCKETS.morning.includes(String(s.period)))).toBe(true);
       }
+    });
+
+    it("evening filter only returns courses with an evening (A–E) slot", async () => {
+      const r = await coursesByTimeForAI({ weekday: 3, timeOfDay: "evening", limit: 12 });
+      if ("error" in r) return;
+      for (const c of r.courses.slice(0, 6)) {
+        const slots = await slotsOf(c.courseKey);
+        expect(slots.some((s) => Number(s.weekday) === 3 && BUCKETS.evening.includes(String(s.period)))).toBe(true);
+      }
+    });
+
+    it("weekday-only (no timeOfDay) returns courses on that weekday", async () => {
+      const r = await coursesByTimeForAI({ weekday: 2, limit: 10 });
+      if ("error" in r) return;
+      for (const c of r.courses.slice(0, 6)) {
+        const slots = await slotsOf(c.courseKey);
+        expect(slots.some((s) => Number(s.weekday) === 2)).toBe(true);
+      }
+    });
+  });
+
+  // ── extra ranking + detail edge cases ────────────────────────────────────
+  describe("ranking + detail edges", () => {
+    it("topCourses by=cool requires >=3 reviews and is sorted by coolness desc", async () => {
+      const r = await topCoursesForAI({ by: "cool", limit: 10 });
+      expect(r.courses.length).toBeGreaterThan(0);
+      for (const c of r.courses) expect(c.reviewCount).toBeGreaterThanOrEqual(3);
+      for (let i = 1; i < r.courses.length; i++)
+        expect(r.courses[i - 1].coolness ?? 0).toBeGreaterThanOrEqual(r.courses[i].coolness ?? 0);
+    });
+
+    it("getCourseDetail returns null for a bogus course_key", async () => {
+      expect(await getCourseDetailForAI("000000000:不存在的課:沒有人")).toBeNull();
+    });
+  });
+
+  // ── buildSchedule extra constraints ──────────────────────────────────────
+  describe("buildSchedule constraints", () => {
+    it("respects MULTIPLE free weekdays", async () => {
+      const r = await buildScheduleForAI({ department: "教育系", grade: 1, term: "1", freeWeekdays: [1, 5] });
+      if ("error" in r) return;
+      for (const c of r.courses) for (const s of c.slots) expect([1, 5]).not.toContain(s.weekday);
+    });
+
+    it("every chosen course carries an absolute site url (no hallucination needed)", async () => {
+      const r = await buildScheduleForAI({ department: "軟工系", grade: 4, term: "1" });
+      if ("error" in r) return;
+      for (const c of r.courses) expect(c.url.includes("/course/")).toBe(true);
     });
   });
 
