@@ -34,7 +34,11 @@ jobs:
           node-version: 24
           cache: npm
 
-      - run: npm ci --no-audit --no-fund
+      # NOT `npm ci`: the wasm32-wasi optional-dep subtree (@emnapi/*,
+      # @napi-rs/wasm-runtime) makes `npm ci` validation disagree across npm
+      # versions (lock written by npm 11.6 fails on the runner's npm with
+      # "Missing: @emnapi/runtime@1.11.0"). Tolerant install self-heals it.
+      - run: npm install --no-audit --no-fund
 
       - name: Run crawler
         env:

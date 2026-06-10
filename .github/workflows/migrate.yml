@@ -27,7 +27,9 @@ jobs:
           node-version: 24
           cache: npm
 
-      - run: npm ci --no-audit --no-fund
+      # Tolerant install (see crawl.yml: `npm ci` validation of the wasm32-wasi
+      # optional-dep subtree disagrees across npm versions).
+      - run: npm install --no-audit --no-fund
 
       - name: Apply migrations
         env:
