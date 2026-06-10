@@ -143,8 +143,12 @@ export function encodeShare(courses: TimetableCourse[]): string {
 
 export function decodeShare(token: string): TimetableCourse[] | null {
   try {
+    // Cap token size before decoding/parsing — a shared link is at most a few
+    // dozen courses, so anything huge is malformed/abusive (avoid wasting work
+    // decoding a multi-MB payload from an untrusted ?s= param).
+    if (token.length > 20_000) return null;
     const parsed = JSON.parse(fromUrlB64(token));
-    if (!Array.isArray(parsed)) return null;
+    if (!Array.isArray(parsed) || parsed.length > 60) return null;
     // Light validation: each entry must carry slots + identity.
     return parsed.filter(
       (c) => c && typeof c.courseCode === "string" && Array.isArray(c.slots),
