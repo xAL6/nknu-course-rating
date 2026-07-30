@@ -191,7 +191,7 @@ export function downloadTimetablePng(courses: TimetableCourse[], semesterLabel: 
   ctx.textAlign = "left";
   ctx.fillStyle = "#6a6a6a";
   ctx.font = "400 11px ui-sans-serif, system-ui, sans-serif";
-  ctx.fillText("nknu-course-rating · 高師大選課評價", pad, H - pad + 6);
+  ctx.fillText("高師大選課評價", pad, H - pad + 6);
   ctx.textAlign = "right";
   ctx.fillText(`製作於 ${dateStr}`, W - pad, H - pad + 6);
 

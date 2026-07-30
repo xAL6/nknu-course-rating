@@ -5,7 +5,7 @@
 
 非官方學生專案,靈感來自 NTU Rating 與 NCKU Hub。
 
-線上版 <https://example.invalid> ・ 授權 [MIT](./LICENSE)
+目前沒有公開的線上版,請自己接一個 Supabase 專案在本機跑(見 [開始](#開始))・ 授權 [MIT](./LICENSE)
 
 ---
 
@@ -23,7 +23,8 @@
   列某系某年級的課、自動排課;答案都從資料庫來,附課程連結,講話像個會吐槽的學長。
 - **個人頁** —— 首次登入可以取名字、上傳頭像。
 
-介面是深色為底、單一暖金色的毛玻璃風格,暗亮雙主題、手機可用。設計細節寫在 [`DESIGN.md`](./DESIGN.md)。
+介面是深色為底、單一暖金色的毛玻璃風格,暗亮雙主題、手機可用。玻璃層級與效能守門的實作
+都在 `src/app/globals.css`(`.glass` / `.glass-strong` / `.glass-soft`)。
 
 ## 技術棧
 
@@ -57,7 +58,6 @@ Next.js 16(App Router、Turbopack)、React 19、TypeScript。Tailwind v4 配 sha
 需要 Node.js 24+、一個 Supabase 專案,AI 助手另外需要 DeepSeek API key(沒有的話它會顯示「未啟用」)。
 
 ```bash
-git clone https://github.com/anon/nknu-course-rating.git
 cd nknu-course-rating
 npm install
 
@@ -109,7 +109,7 @@ src/
     supabase/     client(瀏覽器)/ server(RSC)/ admin(service-role)
 supabase/migrations/   編號、idempotent 的 SQL migration
 scripts/scraper/       課表爬蟲
-.github/workflows/     每月爬蟲 Action
+.github/workflows/     手動觸發的爬蟲 / migration Action
 ```
 
 ## 安全與隱私
@@ -117,7 +117,10 @@ scripts/scraper/       課表爬蟲
 RLS 是真正的防線:anon key 是公開的、Supabase 的 PostgREST 是公開 HTTP API,所以寫入授權不靠前端 ——
 政策要求 `auth.uid() = user_id AND is_nknu()`,而 `is_nknu()` 讀的是已驗證的 JWT email,
 非校園帳號即使直連也寫不進去。我們只存登入識別碼,**從不保存使用者 email**。
-回報漏洞與完整安全模型見 [`SECURITY.md`](./SECURITY.md)。
+
+`.env*` 已被 git 忽略;`SUPABASE_SERVICE_ROLE_KEY` / `DEEPSEEK_API_KEY` 只放在本機 `.env.local`
+或部署平台的加密環境變數,絕不寫進程式碼或文件。公開的 `NEXT_PUBLIC_SUPABASE_URL` 與 anon key
+是設計上可公開的值,真正的保護來自 RLS。
 
 ## 開發慣例
 
@@ -126,7 +129,7 @@ RLS 是真正的防線:anon key 是公開的、Supabase 的 PostgREST 是公開 
 - UI 維持單一金色 + 毛玻璃,別加第二個強調色。
 - 送 PR 前跑過 `npx tsc --noEmit && npm run build && npm test`。
 
-架構、資料模型、爬蟲、Auth/RLS 的完整說明在 [`CLAUDE.md`](./CLAUDE.md)。
+後端佈建、OAuth 設定與例行維運步驟見 [`docs/SETUP.md`](./docs/SETUP.md)。
 
 ## 授權
 

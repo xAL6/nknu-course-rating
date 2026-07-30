@@ -1,12 +1,11 @@
-name: Nightly course crawl
+name: Course crawl
 
 # Refreshes the most recent semester(s) from NKNU's schedule into Supabase.
-# Runs monthly (1st) and on manual dispatch. Requires repo secrets:
-#   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+# Manual dispatch only — there is no hosted instance to keep fresh, so re-enable
+# the `schedule:` trigger yourself if you deploy this somewhere.
+# Requires repo secrets: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 on:
-  schedule:
-    - cron: "30 18 1 * *" # monthly: 1st @ 02:30 Asia/Taipei (UTC+8)
   workflow_dispatch:
     inputs:
       year:
