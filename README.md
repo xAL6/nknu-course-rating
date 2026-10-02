@@ -1,136 +1,82 @@
-# NKNU 選課評價
+<h1 align="center">NKNU 選課評價</h1>
 
-高師大的選課評價與排課平台。課程資料爬自學校公開課表,學生用校園 Google 信箱登入後,
-替「每一位老師的每一門課」寫評價,再用排課模擬器和 AI 助手安排自己的學期。
+<p align="center">高師大學生的選課評價與排課平台</p>
 
-非官方學生專案,靈感來自 NTU Rating 與 NCKU Hub。
+<p align="center">
+  <a href="#功能"><strong>功能</strong></a> ·
+  <a href="#實作筆記"><strong>實作筆記</strong></a> ·
+  <a href="#技術棧"><strong>技術棧</strong></a> ·
+  <a href="#本機執行"><strong>本機執行</strong></a>
+</p>
 
-目前沒有公開的線上版,請自己接一個 Supabase 專案在本機跑(見 [開始](#開始))・ 授權 [MIT](./LICENSE)
+![NKNU 選課評價首頁](docs/screenshots/home.jpg)
 
----
+課程資料爬自學校的公開課表。學生用校園 Google 信箱登入後，可以替每位老師的每門課寫評價，再用排課工具或 AI 助手排出自己的課表。
+
+非官方的學生專案，目前沒有公開的線上版，要跑起來需要自己的 Supabase 專案。
 
 ## 功能
 
-- **課程瀏覽與篩選** —— 日夜間、學年期、校區(和平/燕巢)、學制 → 系所 → 班級層層篩選,
-  跟學校的開課系統對齊。
-- **跨學期搜尋** —— 課名、教師或課號,trigram 相似度排名,一次搜遍所有學年期。
-- **三維度評價** —— 甜度、涼度、收穫(各 1–5),加一段修課心得與快速標籤(會點名、佛心給分…),
-  可以按讚、留言。
-- **每位老師分開評分** —— 同一門課不同老師各自呈現;歷年開課即使課號變了也會合併成一份紀錄。
-- **排課模擬** —— 加課即時抓衝堂(只框住衝突的那一節),先選學期、鎖學期不鎖學年,
-  可以跨年度排、分享連結、存到帳號,還能下載一張排好的 PNG 課表。
-- **AI 課程助手** —— 一個會自己查課表的對話 agent(DeepSeek),找課、比較老師、看課程細節、
-  列某系某年級的課、自動排課;答案都從資料庫來,附課程連結,講話像個會吐槽的學長。
-- **個人頁** —— 首次登入可以取名字、上傳頭像。
+- 依學年期、日夜間、校區、學制、系所、班級篩選，分類跟學校的開課系統一樣
+- 用課名、老師或課號搜尋，一次搜遍所有學期
+- 甜度、涼度、收穫三項評分，加上心得和標籤（會點名、佛心給分⋯），可以按讚、留言
+- 同一門課的不同老師分開計分，課號換了也接得上歷年評價
+- 排課模擬會即時標出衝堂，排好的課表可以存到帳號、分享連結或下載成 PNG
+- AI 課程助手會自己查資料庫，幫你找課、比較老師、依條件排課，講話有點嗆
 
-介面是深色為底、單一暖金色的毛玻璃風格,暗亮雙主題、手機可用。玻璃層級與效能守門的實作
-都在 `src/app/globals.css`(`.glass` / `.glass-strong` / `.glass-soft`)。
+<p align="center">
+  <img alt="AI 助手依條件排出不衝堂的課表" src="docs/screenshots/ai-timetable.jpg" width="52%">
+  <img alt="要求 AI 助手印出系統提示時被拒絕" src="docs/screenshots/ai-prompt-injection.jpg" width="46%">
+  <br>
+  <sub>左：依條件排出不衝堂的課表　右：要它交出 system prompt，直接被嗆回去</sub>
+</p>
+
+## 實作筆記
+
+### 爬蟲
+
+學校課表是 ASP.NET WebForms 頁面。爬蟲帶著 `__VIEWSTATE` 模擬下拉選單的 postback，依序走過學制、系所、班級三層。學校伺服器不太穩，請求失敗會用指數退避重試。
+
+### 課程識別
+
+開課代號會跨年重複使用，同一門課的代號又幾乎每年換，像演算法在 110 到 114 學年就用了五個代號（MA231→232→233→234→238）。所以去重靠全域唯一的 `syllabus_no`，評價則掛在「系所＋正規化課名＋老師」組成的課程鍵上，歷年評價才接得起來。
+
+### 寫入權限
+
+Supabase 的 anon key 和 API 本來就是公開的，前端擋不住直接打 API 的人，所以寫入權限交給資料庫的 RLS：只能寫自己的資料，而且帳號必須是高師信箱。個人資料表刻意不存 email。
+
+### AI 助手
+
+模型只能呼叫 7 個唯讀、參數化的查詢工具，碰不到 SQL，也寫不了資料。明顯的注入攻擊和過長的訊息在進模型前就會被擋掉，另外還有強化過的 system prompt 和每人每小時的使用上限。
+
+資料表關係圖在 [`docs/schema.png`](docs/schema.png)。
 
 ## 技術棧
 
-Next.js 16(App Router、Turbopack)、React 19、TypeScript。Tailwind v4 配 shadcn/ui
-(Nova preset,底層是 **Base UI 不是 Radix**)與 Noto Sans TC。資料庫、登入、檔案儲存都在
-**Supabase**(Postgres + Auth + RLS + Storage)。AI 用 Vercel AI SDK v6 接 DeepSeek
-`deepseek-v4-pro`。爬蟲是 Node + axios + cheerio。部署在 Vercel。
+- [Next.js](https://nextjs.org) 16、React 19、TypeScript
+- [Supabase](https://supabase.com)：Postgres、Auth、RLS、Storage
+- [Tailwind CSS](https://tailwindcss.com) v4、[shadcn/ui](https://ui.shadcn.com)（Base UI）
+- [AI SDK](https://ai-sdk.dev) 搭配 DeepSeek
+- 爬蟲：axios、cheerio
 
-## 怎麼運作
+## 本機執行
 
-> 爬蟲把學校課表灌進 Supabase;Next.js 在伺服器端讀 Supabase 把網頁吐給使用者;學生用 Google
-> 校園信箱登入後,透過 Server Action 寫評價,RLS 在資料庫層做最後把關(本人 + 高師信箱);
-> DeepSeek 提供 grounded 的 AI 助手。
-
-完整的資料表關係見 [`docs/schema.png`](./docs/schema.png)(由 [`docs/schema.puml`](./docs/schema.puml) 產生)。
-
-#### 課程身分模型
-
-這是整個專案最不直覺的地方。NKNU 的開課代號**不穩定**:同一個代號會在不同年份被重用,而同一門課
-的代號又幾乎每年都換(吳明倫的演算法從 110 到 114 是 MA231→232→233→234→238)。所以我們用兩層識別:
-
-- `syllabus_no` 是唯一全域穩定的鍵,用來去重與 upsert。
-- `course_key = 系所 + 正規化課名 + 教師` 才是**邏輯課程** —— 跨年份穩定,又能把不同老師分開。
-  課程頁、評分、歷年開課紀錄都掛在它上面。
-- 列表照**開課代號**呈現(跟學校一致,同學期不同班的 EN303/EN304 各一張卡),每張卡再連到它的邏輯課程。
-
-一筆開課會同時掛在好幾個 班級 / 系所 / 學制底下,所以這些成員身分是用陣列存、用陣列包含來查。
-
-## 開始
-
-需要 Node.js 24+、一個 Supabase 專案,AI 助手另外需要 DeepSeek API key(沒有的話它會顯示「未啟用」)。
+需要 Node.js 24 以上和一個 Supabase 專案。AI 助手另外要 DeepSeek API key，沒填會顯示未啟用。
 
 ```bash
-cd nknu-course-rating
 npm install
-
-cp .env.example .env.local   # 填入 Supabase 金鑰(見下表)
-npm run migrate              # 套用資料庫 migration
-npm run crawl -- --year 114  # 先爬一年的課程資料
-npm run dev                  # http://localhost:3000
+cp .env.example .env.local    # 填入 Supabase 的金鑰和連線字串
+npm run migrate               # 建立資料表
+npm run crawl -- --year 114   # 爬一個學年的課表
+npm run dev                   # http://localhost:3000
 ```
 
-建 Supabase 專案、設 Google OAuth、開 Storage bucket 這些一次性步驟,寫在 [`docs/SETUP.md`](./docs/SETUP.md)。
+Supabase、Google 登入的設定步驟和其他指令都在 [`docs/SETUP.md`](docs/SETUP.md)。
 
-### 環境變數
+## 開發
 
-| 變數 | 必填 | 說明 |
-|---|:---:|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | 是 | Supabase 專案 URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 是 | 公開 anon key,瀏覽器端用,靠 RLS 保護 |
-| `SUPABASE_SERVICE_ROLE_KEY` | 是 | service-role key,**只給伺服器與爬蟲**,絕不可進瀏覽器 |
-| `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS` | 是 | 允許投稿的校園信箱網域,逗號分隔 |
-| `DEEPSEEK_API_KEY` | 否 | 沒有則 AI 助手停用 |
-| `DEEPSEEK_MODEL` | 否 | 覆寫模型,預設 `deepseek-v4-pro` |
-| `NEXT_PUBLIC_SITE_URL` | 否 | 站台網址,給 sitemap 與 OG 用 |
-
-`.env.local` 已被 git 忽略;`SUPABASE_SERVICE_ROLE_KEY` 會略過 RLS,別提交、別放進瀏覽器。
-
-## 指令
-
-```bash
-npm run dev            # 開發伺服器
-npm run build          # 正式建置
-npm test               # vitest(單元 + Supabase RLS 整合,需要 .env.local)
-npx tsc --noEmit       # 型別檢查 app
-
-npm run migrate                       # 套用 supabase/migrations/*.sql
-npm run crawl -- --from 110 --to 114  # 全爬所有學年/學制/日夜/班級 → Supabase
-npm run crawl:rooms                   # 建立校區對照、回填 courses.campus
-npm run seed-reviews                  # 灌示範評價;--purge 一鍵清除
-npm run reset-data                    # 清空爬下來的課程資料(保留帳號)
-```
-
-## 專案結構
-
-```
-src/
-  app/            Next.js App Router(頁面 + /api 路由)
-  components/     UI 元件,ui/ 底下是 shadcn / Base UI 原子元件
-  lib/
-    data/         server-only 資料層(courses, reviews, ai-search…)
-    supabase/     client(瀏覽器)/ server(RSC)/ admin(service-role)
-supabase/migrations/   編號、idempotent 的 SQL migration
-scripts/scraper/       課表爬蟲
-.github/workflows/     手動觸發的爬蟲 / migration Action
-```
-
-## 安全與隱私
-
-RLS 是真正的防線:anon key 是公開的、Supabase 的 PostgREST 是公開 HTTP API,所以寫入授權不靠前端 ——
-政策要求 `auth.uid() = user_id AND is_nknu()`,而 `is_nknu()` 讀的是已驗證的 JWT email,
-非校園帳號即使直連也寫不進去。我們只存登入識別碼,**從不保存使用者 email**。
-
-`.env*` 已被 git 忽略;`SUPABASE_SERVICE_ROLE_KEY` / `DEEPSEEK_API_KEY` 只放在本機 `.env.local`
-或部署平台的加密環境變數,絕不寫進程式碼或文件。公開的 `NEXT_PUBLIC_SUPABASE_URL` 與 anon key
-是設計上可公開的值,真正的保護來自 RLS。
-
-## 開發慣例
-
-- 用 Base UI 的寫法:`<Button>` 搭 `render={<Link/>}` + `nativeButton={false}`,不要用 `asChild`。
-- 動資料庫就新增一支編號、idempotent 的 migration,別改既有檔案。
-- UI 維持單一金色 + 毛玻璃,別加第二個強調色。
-- 送 PR 前跑過 `npx tsc --noEmit && npm run build && npm test`。
-
-後端佈建、OAuth 設定與例行維運步驟見 [`docs/SETUP.md`](./docs/SETUP.md)。
+改資料庫請新增 migration，不要改既有的檔案。送 PR 前先跑過 `npx tsc --noEmit && npm run build && npm test`。
 
 ## 授權
 
-MIT,見 [LICENSE](./LICENSE)。
+[MIT](LICENSE)
